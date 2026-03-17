@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Code2, Type, FileText, Wand2, Bug, Save, MoreHorizontal, Database, Braces } from "lucide-react";
+import { FileText, Braces, Save, MoreHorizontal, Database } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
 
 interface EditorSurfaceProps {
@@ -14,6 +14,7 @@ interface EditorSurfaceProps {
   mode: "text" | "code";
   language: string;
   onRefine: (prompt?: string) => void;
+  onFormat: () => void;
 }
 
 export function EditorSurface({
@@ -24,6 +25,7 @@ export function EditorSurface({
   mode,
   language,
   onRefine,
+  onFormat,
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [lineCount, setLineCount] = useState(1);
@@ -46,7 +48,6 @@ export function EditorSurface({
       onSelectionChange(selected);
 
       if (selected.trim().length > 0) {
-        // Approximate position for the selection bar
         const { clientX, clientY } = (e as React.MouseEvent);
         if (clientX && clientY) {
           setBarPosition({ top: clientY - 60, left: clientX });
@@ -74,13 +75,13 @@ export function EditorSurface({
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" size="sm" 
-            className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-primary/10 hover:text-primary"
-            onClick={() => onRefine()}
+            className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
+            onClick={onFormat}
           >
             <Braces className="w-3.5 h-3.5" />
             AI Format
           </Button>
-          <Button size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold uppercase px-4 shadow-lg shadow-primary/20">
+          <Button size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold uppercase px-4 shadow-lg shadow-primary/20 transition-all active:scale-95">
             <Save className="w-3.5 h-3.5" />
             Commit
           </Button>

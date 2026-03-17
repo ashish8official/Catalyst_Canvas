@@ -7,6 +7,7 @@ import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
 import { DebugPanel } from "@/components/debug/DebugPanel";
 import { generateNewContentFromPrompt } from "@/ai/flows/generate-new-content-from-prompt";
 import { refineSelectedText } from "@/ai/flows/refine-selected-text-flow";
+import { formatContent } from "@/ai/flows/format-content-flow";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { 
@@ -22,8 +23,6 @@ import {
   X,
   Layers,
   Bug,
-  ChevronLeft,
-  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen
 } from "lucide-react";
@@ -43,21 +42,21 @@ const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
     name: "query.sql",
-    content: "SELECT id, name, created_at \nFROM users \nWHERE status = 'active' \nORDER BY created_at DESC;",
+    content: "select id, name, created_at from users where status = 'active' order by created_at desc;",
     language: "SQL",
     mode: "code"
   },
   {
     id: "2",
     name: "process.plsql",
-    content: "CREATE OR REPLACE PROCEDURE update_user_status (\n  p_user_id IN NUMBER,\n  p_status IN VARCHAR2\n) AS\nBEGIN\n  UPDATE users \n  SET status = p_status \n  WHERE id = p_user_id;\n  COMMIT;\nEND;",
+    content: "create or replace procedure update_user_status (p_user_id in number, p_status in varchar2) as begin update users set status = p_status where id = p_user_id; commit; end;",
     language: "PL/SQL",
     mode: "code"
   },
   {
     id: "3",
     name: "notes.txt",
-    content: "TODO: Optimize the user status update procedure.\n- Add logging.\n- Validate input parameters.",
+    content: "todo: optimize the user status update procedure. add logging. validate input parameters.",
     language: "Plain Text",
     mode: "text"
   }
@@ -109,7 +108,7 @@ export default function CatalystCanvas() {
     if (activeFileId === id) setActiveFileId(newFiles[0].id);
   };
 
-  const simulatePipeline = async (prompt: string) => {
+  const simulatePipeline = async (action: () => Promise<string>) => {
     setIsLoading(true);
     setAiOutput("");
     setPipelineStep(0); // Context inject
@@ -121,12 +120,7 @@ export default function CatalystCanvas() {
     setPipelineStep(2); // LLM call
     
     try {
-      let result;
-      if (selection) {
-        result = await refineSelectedText({ selectedText: selection, refinementPrompt: prompt });
-      } else {
-        result = await generateNewContentFromPrompt({ prompt });
-      }
+      const result = await action();
       
       setPipelineStep(3); // Normalize
       await new Promise(r => setTimeout(r, 400));
@@ -134,7 +128,7 @@ export default function CatalystCanvas() {
       setPipelineStep(4); // Diff gen
       await new Promise(r => setTimeout(r, 400));
       
-      setAiOutput(selection ? result.refinedText : result.generatedContent);
+      setAiOutput(result);
       setPipelineStep(5); // Complete
     } catch (error) {
       toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
@@ -146,14 +140,34 @@ export default function CatalystCanvas() {
 
   const handleGenerate = (prompt: string) => {
     setPromptHistory(prev => [prompt, ...prev]);
-    simulatePipeline(prompt);
+    simulatePipeline(async () => {
+      if (selection) {
+        const res = await refineSelectedText({ selectedText: selection, refinementPrompt: prompt });
+        return res.refinedText;
+      } else {
+        const res = await generateNewContentFromPrompt({ prompt });
+        return res.generatedContent;
+      }
+    });
+  };
+
+  const handleFormat = () => {
+    simulatePipeline(async () => {
+      const targetContent = selection || activeFile.content;
+      const res = await formatContent({ 
+        content: targetContent, 
+        language: activeFile.language, 
+        mode: activeFile.mode 
+      });
+      return res.formattedContent;
+    });
   };
 
   const applyAIChange = () => {
     if (selection) {
       updateActiveFileContent(activeFile.content.replace(selection, aiOutput));
     } else {
-      updateActiveFileContent(activeFile.content + "\n\n" + aiOutput);
+      updateActiveFileContent(aiOutput);
     }
     setAiOutput("");
     setSelection("");
@@ -288,8 +302,8 @@ export default function CatalystCanvas() {
               </Button>
               <div className="flex items-center gap-2">
                 <Layers className="w-5 h-5 text-primary" />
-                <h1 className="font-headline font-bold text-lg tracking-tight">
-                  Catalyst<span className="text-primary">.</span>Canvas
+                <h1 className="font-headline font-bold text-lg tracking-tight text-primary">
+                  Catalyst<span className="text-foreground">.</span>Canvas
                 </h1>
               </div>
               <div className="h-4 w-px bg-border" />
@@ -315,7 +329,8 @@ export default function CatalystCanvas() {
                 onSelectionChange={setSelection}
                 mode={activeFile.mode}
                 language={activeFile.language}
-                onRefine={(p) => handleGenerate(p || "Refine selected content")}
+                onRefine={(p) => p ? handleGenerate(p) : handleFormat()}
+                onFormat={handleFormat}
               />
             </div>
             
