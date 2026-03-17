@@ -1,13 +1,12 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { EditorSurface } from "@/components/editor/EditorSurface";
 import { PromptConsole } from "@/components/ai/PromptConsole";
 import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
+import { DebugPanel } from "@/components/debug/DebugPanel";
 import { generateNewContentFromPrompt } from "@/ai/flows/generate-new-content-from-prompt";
 import { refineSelectedText } from "@/ai/flows/refine-selected-text-flow";
-import { explainOrFixSelectedCode } from "@/ai/flows/explain-or-fix-selected-code";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { 
@@ -20,7 +19,10 @@ import {
   FileCode, 
   FileText, 
   FolderOpen,
-  X
+  X,
+  Layers,
+  Terminal,
+  Bug
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,16 +38,23 @@ interface FileEntry {
 const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
-    name: "main.ts",
-    content: "// Welcome to Catalyst Canvas\n// The context-aware intelligent workspace.\n\nfunction helloWorld() {\n  console.log(\"Start creating with AI power...\");\n}",
-    language: "TypeScript",
+    name: "query.sql",
+    content: "SELECT id, name, created_at \nFROM users \nWHERE status = 'active' \nORDER BY created_at DESC;",
+    language: "SQL",
     mode: "code"
   },
   {
     id: "2",
-    name: "README.md",
-    content: "# Project Catalyst\n\nThis is your intelligent workspace where AI helps you write and code better.",
-    language: "Markdown",
+    name: "process.plsql",
+    content: "CREATE OR REPLACE PROCEDURE update_user_status (\n  p_user_id IN NUMBER,\n  p_status IN VARCHAR2\n) AS\nBEGIN\n  UPDATE users \n  SET status = p_status \n  WHERE id = p_user_id;\n  COMMIT;\nEND;",
+    language: "PL/SQL",
+    mode: "code"
+  },
+  {
+    id: "3",
+    name: "notes.txt",
+    content: "TODO: Optimize the user status update procedure.\n- Add logging.\n- Validate input parameters.",
+    language: "Plain Text",
     mode: "text"
   }
 ];
@@ -57,14 +66,16 @@ export default function CatalystCanvas() {
   const [files, setFiles] = useState<FileEntry[]>(INITIAL_FILES);
   const [activeFileId, setActiveFileId] = useState<string>("1");
   
-  // Active File Derived State
-  const activeFile = files.find(f => f.id === activeFileId) || files[0];
-  
-  // Editor/AI State
+  // UI State
+  const [sidebarTab, setSidebarTab] = useState<"explorer" | "debug">("explorer");
   const [selection, setSelection] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [aiOutput, setAiOutput] = useState("");
+  const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
+
+  // Active File Derived State
+  const activeFile = files.find(f => f.id === activeFileId) || files[0];
 
   const updateActiveFileContent = (newContent: string) => {
     setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: newContent } : f));
@@ -74,17 +85,13 @@ export default function CatalystCanvas() {
     const newId = Math.random().toString(36).substring(7);
     const newFile: FileEntry = {
       id: newId,
-      name: `new-file-${files.length + 1}.ts`,
+      name: `new-file-${files.length + 1}.sql`,
       content: "",
-      language: "TypeScript",
+      language: "SQL",
       mode: "code"
     };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newId);
-    toast({
-      title: "File Created",
-      description: `Created ${newFile.name}`
-    });
   };
 
   const handleDeleteFile = (e: React.MouseEvent, id: string) => {
@@ -92,61 +99,47 @@ export default function CatalystCanvas() {
     if (files.length === 1) return;
     const newFiles = files.filter(f => f.id !== id);
     setFiles(newFiles);
-    if (activeFileId === id) {
-      setActiveFileId(newFiles[0].id);
-    }
+    if (activeFileId === id) setActiveFileId(newFiles[0].id);
   };
 
-  const handleGenerate = async (prompt: string) => {
+  const simulatePipeline = async (prompt: string) => {
     setIsLoading(true);
-    setPromptHistory(prev => [prompt, ...prev]);
+    setAiOutput("");
+    setPipelineStep(0); // Context inject
+    
+    await new Promise(r => setTimeout(r, 600));
+    setPipelineStep(1); // Template expand
+    
+    await new Promise(r => setTimeout(r, 800));
+    setPipelineStep(2); // LLM call
+    
     try {
+      let result;
       if (selection) {
-        const result = await refineSelectedText({
-          selectedText: selection,
-          refinementPrompt: prompt
-        });
-        setAiOutput(result.refinedText);
+        result = await refineSelectedText({ selectedText: selection, refinementPrompt: prompt });
       } else {
-        const result = await generateNewContentFromPrompt({ prompt });
-        setAiOutput(result.generatedContent);
+        result = await generateNewContentFromPrompt({ prompt });
       }
+      
+      setPipelineStep(3); // Normalize
+      await new Promise(r => setTimeout(r, 400));
+      
+      setPipelineStep(4); // Diff gen
+      await new Promise(r => setTimeout(r, 400));
+      
+      setAiOutput(selection ? result.refinedText : result.generatedContent);
+      setPipelineStep(5); // Complete
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "AI Generation Failed",
-        description: "An error occurred while communicating with the AI engine."
-      });
+      toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
+      setPipelineStep(-1);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDebug = async () => {
-    if (!selection) {
-      toast({
-        title: "No Code Selected",
-        description: "Please highlight a snippet of code to debug."
-      });
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const result = await explainOrFixSelectedCode({
-        codeSnippet: selection,
-        action: "fix_or_improve",
-        language: activeFile.language.toLowerCase()
-      });
-      setAiOutput(result.explanationOrFix);
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Debug Failed",
-        description: "Unable to process the code snippet for debugging."
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGenerate = (prompt: string) => {
+    setPromptHistory(prev => [prompt, ...prev]);
+    simulatePipeline(prompt);
   };
 
   const applyAIChange = () => {
@@ -157,89 +150,107 @@ export default function CatalystCanvas() {
     }
     setAiOutput("");
     setSelection("");
-    toast({
-      title: "Content Updated",
-      description: "AI suggestion has been successfully integrated."
-    });
+    setPipelineStep(-1);
   };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* App Sidebar */}
-      <div className="w-16 flex flex-col items-center py-6 gap-6 border-r bg-card/60 backdrop-blur-sm z-20">
-        <div className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/10">
-          <Cpu className="w-6 h-6 text-background" />
+      {/* App Sidebar (Icon Bar) */}
+      <div className="w-16 flex flex-col items-center py-6 gap-6 border-r bg-card/60 backdrop-blur-md z-20">
+        <div className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/20">
+          <Cpu className="w-6 h-6 text-primary-foreground" />
         </div>
         <div className="flex-1 flex flex-col gap-4">
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
+          <Button 
+            variant="ghost" size="icon" 
+            className={cn("h-10 w-10 transition-colors", sidebarTab === "explorer" ? "text-primary bg-primary/10" : "text-muted-foreground")}
+            onClick={() => setSidebarTab("explorer")}
+          >
             <FolderOpen className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
+          <Button 
+            variant="ghost" size="icon" 
+            className={cn("h-10 w-10 transition-colors", sidebarTab === "debug" ? "text-destructive bg-destructive/10" : "text-muted-foreground")}
+            onClick={() => setSidebarTab("debug")}
+          >
+            <Bug className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
             <Search className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
             <Settings className="w-5 h-5" />
           </Button>
         </div>
         <div className="flex flex-col gap-4">
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
             <HelpCircle className="w-5 h-5" />
           </Button>
-          <div className="w-10 h-10 rounded-full bg-accent border border-border flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center">
             <UserCircle className="w-6 h-6 text-muted-foreground" />
           </div>
         </div>
       </div>
 
-      {/* Explorer Sidebar */}
-      <div className="w-64 border-r bg-card/30 flex flex-col">
-        <div className="p-4 flex items-center justify-between border-b">
-          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Explorer</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCreateFile}>
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {files.map(file => (
-            <button
-              key={file.id}
-              onClick={() => setActiveFileId(file.id)}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all group",
-                activeFileId === file.id 
-                  ? "bg-accent text-primary font-medium" 
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              )}
-            >
-              {file.mode === "code" ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-              <span className="truncate flex-1 text-left">{file.name}</span>
-              {files.length > 1 && (
-                <X 
-                  className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity" 
-                  onClick={(e) => handleDeleteFile(e, file.id)}
-                />
-              )}
-            </button>
-          ))}
-        </div>
+      {/* Explorer/Debug Sidebar Panel */}
+      <div className="w-72 border-r bg-card/40 flex flex-col">
+        {sidebarTab === "explorer" ? (
+          <>
+            <div className="p-4 flex items-center justify-between border-b bg-secondary/20">
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project Explorer</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCreateFile}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              {files.map(file => (
+                <button
+                  key={file.id}
+                  onClick={() => setActiveFileId(file.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group",
+                    activeFileId === file.id 
+                      ? "bg-primary/15 text-primary border border-primary/20 shadow-sm" 
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
+                  )}
+                >
+                  {file.mode === "code" ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                  <span className="truncate flex-1 text-left">{file.name}</span>
+                  {files.length > 1 && (
+                    <X 
+                      className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity" 
+                      onClick={(e) => handleDeleteFile(e, file.id)}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <DebugPanel onFixAll={() => handleGenerate("Refactor and fix all reported issues in this block.")} />
+        )}
       </div>
 
-      {/* Main Layout Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col relative min-w-0">
-        <header className="h-16 border-b px-8 flex items-center justify-between bg-card/10 backdrop-blur-xl sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <h1 className="font-headline font-bold text-xl tracking-tight">
-              Catalyst<span className="text-muted-foreground/50">.</span>Canvas
-            </h1>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className="bg-accent/50 px-2 py-0.5 rounded border border-border">{activeFile.name}</span>
+        <header className="h-16 border-b px-8 flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-10">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              <h1 className="font-headline font-bold text-xl tracking-tight">
+                Catalyst<span className="text-primary">.</span>Canvas
+              </h1>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <div className="flex items-center gap-2 bg-secondary/40 px-3 py-1 rounded-full border border-white/5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Domain:</span>
+              <span className="text-[10px] font-semibold text-primary/80 truncate max-w-[150px]">Project_Core / {activeFile.name}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-             <div className="flex items-center bg-accent/30 border border-white/5 rounded-full px-3 py-1 gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Workspace Sync</span>
+             <div className="flex items-center bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Active Workspace</span>
              </div>
           </div>
         </header>
@@ -253,12 +264,11 @@ export default function CatalystCanvas() {
               onSelectionChange={setSelection}
               mode={activeFile.mode}
               language={activeFile.language}
-              onRefine={() => handleGenerate("Refine and improve this content while maintaining context.")}
-              onDebug={handleDebug}
+              onRefine={(p) => handleGenerate(p || "Refine selected content")}
             />
           </div>
           
-          <aside className="w-[400px] flex-shrink-0 flex flex-col h-full rounded-2xl overflow-hidden border bg-card/20 shadow-2xl">
+          <aside className="w-[420px] flex-shrink-0 flex flex-col h-full rounded-2xl overflow-hidden border bg-card/40 shadow-2xl backdrop-blur-sm">
             <PromptConsole 
               onGenerate={handleGenerate} 
               isLoading={isLoading} 
@@ -270,9 +280,10 @@ export default function CatalystCanvas() {
         <AIOutputDisplay 
           output={aiOutput} 
           onAccept={applyAIChange} 
-          onReject={() => setAiOutput("")}
-          onRefine={() => handleGenerate("Make this suggestion better.")}
-          isApplying={false}
+          onReject={() => { setAiOutput(""); setPipelineStep(-1); }}
+          onRefine={() => handleGenerate("Iterate on this suggestion for better clarity.")}
+          isLoading={isLoading}
+          step={pipelineStep}
         />
       </div>
       
