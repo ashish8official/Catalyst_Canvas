@@ -2,10 +2,6 @@
 'use server';
 /**
  * @fileOverview A Genkit flow for explaining or suggesting fixes/improvements for a given code snippet.
- *
- * - explainOrFixSelectedCode - A function that handles the explanation or fixing/improvement process.
- * - ExplainOrFixSelectedCodeInput - The input type for the explainOrFixSelectedCode function.
- * - ExplainOrFixSelectedCodeOutput - The return type for the explainOrFixSelectedCode function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -20,7 +16,7 @@ const ExplainOrFixSelectedCodeInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'The programming language of the code snippet (e.g., "typescript", "java", "sql"). If not provided, the AI should try to infer it.'
+      'The programming language of the code snippet.'
     ),
 });
 export type ExplainOrFixSelectedCodeInput = z.infer<
@@ -30,13 +26,12 @@ export type ExplainOrFixSelectedCodeInput = z.infer<
 const ExplainOrFixSelectedCodeOutputSchema = z.object({
   explanationOrFix: z
     .string()
-    .describe('The AI generated explanation or suggested fix/improvement for the code snippet.'),
+    .describe('The AI generated explanation or suggested fix/improvement.'),
 });
 export type ExplainOrFixSelectedCodeOutput = z.infer<
   typeof ExplainOrFixSelectedCodeOutputSchema
 >;
 
-// Internal schema for the prompt including boolean flags for logic-less templates
 const PromptInputSchema = ExplainOrFixSelectedCodeInputSchema.extend({
   isExplain: z.boolean(),
   isFix: z.boolean(),
@@ -52,30 +47,22 @@ const prompt = ai.definePrompt({
   name: 'explainOrFixSelectedCodePrompt',
   input: {schema: PromptInputSchema},
   output: {schema: ExplainOrFixSelectedCodeOutputSchema},
-  prompt: `You are an expert software engineer and code reviewer.
+  prompt: `You are an expert software engineer.
 
 {{#if isExplain}}
-Explain the following code snippet concisely and clearly. Focus on its purpose, how it works, and any key concepts or potential pitfalls.
+Explain this code snippet concisely.
 {{/if}}
 
 {{#if isFix}}
-Analyze the following code snippet and suggest potential fixes or improvements. Focus on common issues, best practices, performance, security, and readability. Provide explanations for your suggestions.
+Suggest fixes or improvements for this code.
 {{/if}}
 
-The code is written in {{{language}}} (if provided, otherwise infer the language).
+Language: {{{language}}}
 
 Code:
 \`\`\`
 {{{codeSnippet}}}
 \`\`\`
-
-{{#if isExplain}}
-Explanation:
-{{/if}}
-
-{{#if isFix}}
-Suggestions/Improvements:
-{{/if}}
 `,
 });
 
