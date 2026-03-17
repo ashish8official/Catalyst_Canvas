@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, History, MessageSquare, Zap, Terminal, Send, ArrowRight, Type, CheckCircle2, Box, BrainCircuit } from "lucide-react";
+import { Sparkles, History, Zap, Terminal, Send, ArrowRight, Type, CheckCircle2, Box, BrainCircuit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
