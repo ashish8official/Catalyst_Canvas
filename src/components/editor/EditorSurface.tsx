@@ -21,7 +21,7 @@ import {
   Plus
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
