@@ -1,27 +1,24 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { 
   Check, 
   X, 
   RefreshCw, 
-  Copy, 
-  Activity, 
-  Search, 
-  Braces, 
   Sparkles, 
-  Terminal,
   ChevronRight,
-  Fingerprint
-} from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+  Terminal,
+  Cpu,
+  CornerDownRight
+} from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface AIOutputDisplayProps {
   output: string;
+  originalContent: string;
   onAccept: () => void;
   onReject: () => void;
   onRefine: () => void;
@@ -29,161 +26,135 @@ interface AIOutputDisplayProps {
   step: number;
 }
 
-export function AIOutputDisplay({ output, onAccept, onReject, onRefine, isLoading, step }: AIOutputDisplayProps) {
-  // Only show if we are loading or have output
+export function AIOutputDisplay({ 
+  output, 
+  originalContent,
+  onAccept, 
+  onReject, 
+  onRefine, 
+  isLoading, 
+  step 
+}: AIOutputDisplayProps) {
+  const [height, setHeight] = useState(400);
+
   if (step === -1 && !output && !isLoading) return null;
 
   const pipeline = [
-    { label: "Context Inject", icon: <Search className="w-3 h-3" /> },
-    { label: "Template Expand", icon: <Braces className="w-3 h-3" /> },
-    { label: "LLM Processing", icon: <Sparkles className="w-3 h-3" /> },
-    { label: "Normalizing", icon: <Fingerprint className="w-3 h-3" /> },
-    { label: "Diff Generating", icon: <Terminal className="w-3 h-3" /> },
+    { label: "Context", id: 0 },
+    { label: "Expand", id: 1 },
+    { label: "Generate", id: 2 },
+    { label: "Normalize", id: 3 },
+    { label: "Diff", id: 4 },
   ];
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-5xl px-6 z-50 animate-in slide-in-from-bottom-full duration-500 ease-out">
-      <div className="bg-[#15181D]/95 border border-[#B478EA]/30 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)] rounded-[2.5rem] overflow-hidden flex flex-col backdrop-blur-3xl ring-1 ring-white/5">
-        
-        {/* Pipeline Progress Header */}
-        <div className="px-8 py-4 bg-secondary/30 border-b border-white/5 flex items-center justify-between">
+    <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom-full duration-500 ease-out">
+      <div 
+        className="bg-[#1C2028] border-t border-[#B478EA]/40 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.8)] flex flex-col backdrop-blur-3xl"
+        style={{ height: `${height}px` }}
+      >
+        {/* Resize Handle */}
+        <div className="h-1 w-full bg-[#2A3149] cursor-ns-resize hover:bg-[#B478EA] transition-colors" />
+
+        {/* Header */}
+        <div className="px-8 py-4 border-b border-[#2A3149] flex items-center justify-between bg-[#222837]/30">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-[#B478EA] animate-pulse shadow-[0_0_10px_#B478EA]" />
-              <span className="text-[10px] font-bold tracking-[0.25em] uppercase text-[#B478EA]">Intelligence Pipeline</span>
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-4 h-4 text-[#B478EA]" />
+              <span className="text-xs font-bold uppercase tracking-[0.2em]">AI Suggestion</span>
+              <Badge variant="outline" className="text-[9px] border-[#B478EA]/30 text-[#B478EA] uppercase px-2 h-5">Proposed Implementation</Badge>
             </div>
             
+            {/* Pipeline Tracker */}
             <div className="hidden md:flex items-center gap-2">
               {pipeline.map((p, i) => (
-                <React.Fragment key={p.label}>
+                <React.Fragment key={p.id}>
                   <div className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-500 border",
-                    step === i ? "bg-[#B478EA] border-[#B478EA] text-white shadow-lg shadow-[#B478EA]/20 scale-105" : 
-                    step > i ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/5 opacity-80" : 
-                    "border-white/5 text-muted-foreground opacity-30 bg-transparent"
+                    "flex items-center gap-2 px-3 py-1 rounded-full transition-all duration-500",
+                    step === i ? "bg-[#B478EA] text-white shadow-lg shadow-[#B478EA]/20 scale-105" : 
+                    step > i ? "text-[#34D399] opacity-80" : 
+                    "text-[#4A5178] opacity-30"
                   )}>
-                    {p.icon}
-                    <span className="text-[9px] font-bold uppercase tracking-wider">{p.label}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">{p.label}</span>
                   </div>
-                  {i < pipeline.length - 1 && (
-                    <ChevronRight className={cn(
-                      "w-3 h-3 transition-opacity duration-500",
-                      step > i ? "text-emerald-500/40" : "text-white/5"
-                    )} />
-                  )}
+                  {i < pipeline.length - 1 && <ChevronRight className={cn("w-3 h-3", step > i ? "text-[#34D399]/40" : "text-[#4A5178]")} />}
                 </React.Fragment>
               ))}
             </div>
           </div>
-          
-          <div className="flex items-center gap-3">
-             <Badge variant="outline" className="text-[9px] font-mono border-[#B478EA]/30 text-[#B478EA] uppercase px-2.5 h-6">
-               {isLoading ? "Processing..." : "Ready for Merge"}
-             </Badge>
-          </div>
-        </div>
-        
-        {/* Content Diff Area */}
-        <div className="flex-1 flex min-h-[160px] max-h-[500px]">
-          <ScrollArea className="flex-1 p-0 font-code text-[13px] leading-relaxed">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-24 gap-5">
-                <div className="relative">
-                   <div className="w-14 h-14 border-2 border-[#B478EA]/10 border-t-[#B478EA] rounded-full animate-spin" />
-                   <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 text-[#B478EA] animate-pulse" />
-                </div>
-                <div className="text-center space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-foreground/80">Synthesizing Content</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono">Stage: {pipeline[Math.min(step, 4)]?.label || "Initializing"}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="py-6 bg-black/40">
-                {output.split('\n').map((line, i) => {
-                  const isAdd = line.startsWith('+');
-                  const isDel = line.startsWith('-');
-                  return (
-                    <div key={i} className={cn(
-                      "flex gap-6 px-8 py-0.5 group transition-colors relative",
-                      isAdd ? "bg-emerald-500/10 text-emerald-300/90 border-l-[3px] border-emerald-500" :
-                      isDel ? "bg-destructive/10 text-destructive border-l-[3px] border-destructive opacity-50 line-through" :
-                      "text-foreground/70 hover:bg-white/5 border-l-[3px] border-transparent"
-                    )}>
-                      {/* Generative Glow for changes */}
-                      {(isAdd || isDel) && <div className="absolute inset-0 bg-[#B478EA]/5 pointer-events-none" />}
-                      
-                      <span className="w-10 text-right opacity-20 select-none font-mono text-[10px] shrink-0 pt-0.5">{i + 1}</span>
-                      <pre className="whitespace-pre-wrap break-all font-code">{line}</pre>
-                      
-                      {isAdd && (
-                         <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Badge variant="outline" className="text-[8px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30 uppercase">Proposed</Badge>
-                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {output === "" && (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                    <Terminal className="w-10 h-10 mb-4" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No changes detected in the delta</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
 
-        {/* Action Footer */}
-        {!isLoading && output && (
-          <div className="p-6 border-t border-white/5 bg-secondary/10 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-3 text-[10px] text-[#4A5178] font-mono mr-4">
+              <span className="px-1.5 py-0.5 bg-[#222837] rounded border border-[#2A3149]">⌘↵ Accept</span>
+              <span className="px-1.5 py-0.5 bg-[#222837] rounded border border-[#2A3149]">Esc Reject</span>
+            </div>
+            <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
-                className="h-11 gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive text-[11px] font-bold uppercase tracking-widest px-6 rounded-2xl transition-all"
+                size="sm"
+                className="h-9 px-4 text-[#F87171] hover:bg-[#F87171]/10 text-[10px] font-bold uppercase rounded-lg"
                 onClick={onReject}
               >
-                <X className="w-4 h-4" />
-                Discard
+                <X className="w-3.5 h-3.5 mr-2" /> Reject
               </Button>
               <Button 
-                variant="outline" 
-                className="h-11 gap-2 text-[11px] font-bold uppercase tracking-widest border-white/10 hover:bg-white/5 px-6 rounded-2xl transition-all"
+                variant="outline"
+                size="sm"
+                className="h-9 px-4 border-[#2A3149] hover:bg-[#222837] text-[10px] font-bold uppercase rounded-lg"
                 onClick={onRefine}
               >
-                <RefreshCw className="w-4 h-4" />
-                Iterate Suggestion
+                <RefreshCw className="w-3.5 h-3.5 mr-2" /> Refine
               </Button>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" size="icon" 
-                      className="h-11 w-11 text-muted-foreground hover:text-[#B478EA] rounded-2xl transition-all" 
-                      onClick={() => {
-                        navigator.clipboard.writeText(output);
-                      }}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Copy to Clipboard</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
               <Button 
-                className="h-11 gap-3 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[11px] font-bold uppercase tracking-wider px-10 rounded-2xl shadow-[0_10px_30px_-5px_rgba(180,120,234,0.4)] transition-all active:scale-95"
+                size="sm"
+                className="h-9 px-6 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[10px] font-bold uppercase rounded-lg shadow-lg shadow-[#B478EA]/20"
                 onClick={onAccept}
               >
-                <Check className="w-4 h-4" />
-                Apply Implementation
+                <Check className="w-3.5 h-3.5 mr-2" /> Accept Implementation
               </Button>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Split View Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left: Original */}
+          <div className="flex-1 border-r border-[#2A3149] bg-[#15181D]/40 flex flex-col">
+            <div className="p-3 bg-[#1C2028]/60 text-[9px] font-bold uppercase tracking-[0.2em] text-[#4A5178] border-b border-[#2A3149]">Original Content</div>
+            <ScrollArea className="flex-1 p-6 font-mono text-[13px] text-[#4A5178] leading-relaxed">
+              <pre className="whitespace-pre-wrap">{originalContent}</pre>
+            </ScrollArea>
+          </div>
+
+          {/* Right: Suggestion */}
+          <div className="flex-1 bg-[#15181D] flex flex-col">
+            <div className="p-3 bg-[#1C2028]/60 text-[9px] font-bold uppercase tracking-[0.2em] text-[#B478EA] border-b border-[#2A3149]">AI Suggestion</div>
+            <ScrollArea className="flex-1 p-0 font-mono text-[13px] leading-relaxed">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
+                  <div className="w-10 h-10 border-2 border-[#B478EA]/20 border-t-[#B478EA] rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Synthesizing Implementation...</span>
+                </div>
+              ) : (
+                <div className="py-6">
+                  {output.split('\n').map((line, i) => {
+                    const isNew = line.trim() && !originalContent.includes(line.trim());
+                    return (
+                      <div key={i} className={cn(
+                        "flex gap-6 px-8 py-0.5 group relative transition-all",
+                        isNew ? "bg-[#34D399]/5 text-[#34D399] border-l-[3px] border-[#34D399]" : "text-[#E8ECF5]/60 border-l-[3px] border-transparent"
+                      )}>
+                        {isNew && <div className="absolute inset-0 bg-[#B478EA]/5 pointer-events-none" />}
+                        <span className="w-8 text-right opacity-20 select-none text-[10px] shrink-0 pt-0.5">{i + 1}</span>
+                        <pre className="whitespace-pre-wrap font-mono">{line}</pre>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </div>
       </div>
     </div>
   );

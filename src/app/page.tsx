@@ -1,257 +1,151 @@
+'use client';
 
-"use client";
-
-import React, { useState, useMemo } from "react";
-import { EditorSurface } from "@/components/editor/EditorSurface";
-import { PromptConsole } from "@/components/ai/PromptConsole";
-import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
-import { DebugPanel } from "@/components/debug/DebugPanel";
-import { generateNewContentFromPrompt } from "@/ai/flows/generate-new-content-from-prompt";
-import { refineSelectedText } from "@/ai/flows/refine-selected-text-flow";
-import { formatContent } from "@/ai/flows/format-content-flow";
-import { explainOrFixSelectedCode } from "@/ai/flows/explain-or-fix-selected-code";
-import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
+import React, { useState, useEffect, useMemo } from 'react';
+import { EditorSurface } from '@/components/editor/EditorSurface';
+import { PromptConsole } from '@/components/ai/PromptConsole';
+import { AIOutputDisplay } from '@/components/ai/AIOutputDisplay';
+import { generateNewContentFromPrompt } from '@/ai/flows/generate-new-content-from-prompt';
+import { refineSelectedText } from '@/ai/flows/refine-selected-text-flow';
+import { formatContent } from '@/ai/flows/format-content-flow';
+import { explainOrFixSelectedCode } from '@/ai/flows/explain-or-fix-selected-code';
+import { useToast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
 import { 
   Cpu, 
   Settings, 
   UserCircle, 
   Search, 
-  HelpCircle, 
   FolderOpen,
   Bug,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Activity,
-  Trash2,
-  Save,
-  FilePlus,
-  Share2,
-  Download,
-  Zap,
-  Layers,
-  Type,
-  Hash,
-  FileCode,
-  FileText,
-  FileJson,
-  Palette,
-  List,
-  Sparkles
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  PanelRightClose,
+  PanelRightOpen,
+  Sparkles,
+  SearchCode,
+  Globe
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DebugPanel } from '@/components/debug/DebugPanel';
 
 interface FileEntry {
   id: string;
   name: string;
   content: string;
   language: string;
-  mode: "text" | "code";
-}
-
-interface DocStats {
-  words: number;
-  chars: number;
-  lines: number;
+  mode: 'text' | 'code';
 }
 
 const INITIAL_FILES: FileEntry[] = [
   {
-    id: "1",
-    name: "query.sql",
+    id: '1',
+    name: 'query.sql',
     content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;\n\nSELECT * FROM logs WHERE level = 'ERROR';",
-    language: "SQL",
-    mode: "code"
+    language: 'SQL',
+    mode: 'code'
   },
   {
-    id: "2",
-    name: "main.py",
+    id: '2',
+    name: 'main.py',
     content: "def greet(name):\n    print(f'Hello, {name}!')\n\nif __name__ == '__main__':\n    greet('World')",
-    language: "Python",
-    mode: "code"
+    language: 'Python',
+    mode: 'code'
   }
 ];
-
-type SidebarTab = "explorer" | "debug" | "search" | "settings";
 
 export default function CatalystCanvas() {
   const { toast } = useToast();
   
-  // File System State
-  const [files, setFiles] = useState<FileEntry[]>(INITIAL_FILES);
-  const [activeFileId, setActiveFileId] = useState<string>("1");
-  
-  // UI State
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("explorer");
-  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  // Persistence logic for AI Panel
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
-  const [selection, setSelection] = useState("");
+  useEffect(() => {
+    const saved = localStorage.getItem('cc-ai-panel-open');
+    if (saved !== null) setIsAiPanelOpen(saved === 'true');
+  }, []);
+
+  const toggleAiPanel = () => {
+    const newState = !isAiPanelOpen;
+    setIsAiPanelOpen(newState);
+    localStorage.setItem('cc-ai-panel-open', String(newState));
+  };
+
+  // Global State
+  const [files, setFiles] = useState<FileEntry[]>(INITIAL_FILES);
+  const [activeFileId, setActiveFileId] = useState<string>('1');
+  const [sidebarTab, setSidebarTab] = useState<'explorer' | 'debug' | 'search' | 'settings'>('explorer');
+  const [selection, setSelection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [aiOutput, setAiOutput] = useState("");
+  const [aiOutput, setAiOutput] = useState('');
   const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [wordWrap, setWordWrap] = useState(true);
-  const [editorColor, setEditorColor] = useState("default");
-  const [stats, setStats] = useState<DocStats>({ words: 0, chars: 0, lines: 0 });
+  const [activeContextChips, setActiveContextChips] = useState<string[]>(['FULL DOC']);
+  
+  const [editorStats, setEditorStats] = useState({ 
+    words: 0, 
+    chars: 0, 
+    lines: 0, 
+    ln: 1, 
+    col: 1 
+  });
 
-  // Dialog State
-  const [isSaveAsOpen, setIsSaveAsOpen] = useState(false);
-  const [newFileName, setNewFileName] = useState("");
-
-  // Active File Derived State
-  const activeFile = useMemo(() => files.find(f => f.id === activeFileId) || files[0], [files, activeFileId]);
-
-  const editorColors = [
-    { id: "default", label: "Catalyst White", color: "bg-foreground" },
-    { id: "blue", label: "Intelligent Blue", color: "bg-[#4775D1]" },
-    { id: "emerald", label: "Emerald City", color: "bg-emerald-400" },
-    { id: "amber", label: "Amber Glow", color: "bg-amber-400" },
-    { id: "purple", label: "Catalyst Purple", color: "bg-[#B478EA]" },
-  ];
-
-  // Language Detection Logic
-  const detectLanguage = (name: string, content: string) => {
-    const ext = name.split('.').pop()?.toLowerCase() || '';
-    
-    if (ext === 'sql') return { language: 'SQL', mode: 'code' as const };
-    if (ext === 'plsql') return { language: 'PL/SQL', mode: 'code' as const };
-    if (ext === 'py') return { language: 'Python', mode: 'code' as const };
-    if (ext === 'md') return { language: 'Markdown', mode: 'text' as const };
-    if (ext === 'json') return { language: 'JSON', mode: 'code' as const };
-    if (ext === 'txt') return { language: 'Plain Text', mode: 'text' as const };
-
-    const snippet = content.substring(0, 500).toUpperCase();
-    const sqlKeywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'CREATE ', 'DROP ', 'ALTER ', 'TABLE '];
-    const plsqlKeywords = ['DECLARE', 'BEGIN', 'EXCEPTION', 'PROCEDURE ', 'FUNCTION '];
-
-    if (plsqlKeywords.some(kw => snippet.includes(kw))) return { language: 'PL/SQL', mode: 'code' as const };
-    if (sqlKeywords.some(kw => snippet.includes(kw))) return { language: 'SQL', mode: 'code' as const };
-    if (snippet.includes('DEF ') || snippet.includes('IMPORT ')) return { language: 'Python', mode: 'code' as const };
-
-    return { language: 'Plain Text', mode: 'text' as const };
-  };
-
-  const updateActiveFileContent = (newContent: string) => {
-    setFiles(prev => prev.map(f => {
-      if (f.id === activeFileId) {
-        const { language, mode } = detectLanguage(f.name, newContent);
-        return { ...f, content: newContent, language, mode };
-      }
-      return f;
-    }));
-  };
+  const activeFile = useMemo(() => 
+    files.find(f => f.id === activeFileId) || files[0], 
+    [files, activeFileId]
+  );
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    const name = `untitled-${files.length + 1}.txt`;
-    const { language, mode } = detectLanguage(name, "");
-
     const newFile: FileEntry = {
       id: newId,
-      name: name,
-      content: "",
-      language: language,
-      mode: mode
+      name: `untitled-${files.length + 1}.txt`,
+      content: '',
+      language: 'Plain Text',
+      mode: 'text'
     };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newId);
-    setSidebarTab("explorer");
-    setIsExplorerOpen(true);
-    toast({ title: "File Created", description: `Created ${newFile.name}` });
   };
 
-  const handleDeleteFile = (id: string) => {
-    if (files.length === 1) {
-      toast({ variant: "destructive", title: "Cannot delete", description: "You must have at least one file open." });
-      return;
-    }
-    const fileToDelete = files.find(f => f.id === id);
-    const newFiles = files.filter(f => f.id !== id);
-    setFiles(newFiles);
-    if (activeFileId === id) setActiveFileId(newFiles[0].id);
-    toast({ title: "File Deleted", description: `Removed ${fileToDelete?.name}` });
-  };
-
-  const handleSaveAs = () => {
-    if (!newFileName.trim()) return;
-    const { language, mode } = detectLanguage(newFileName, activeFile.content);
-    const newId = Math.random().toString(36).substring(7);
-    const newFile: FileEntry = { id: newId, name: newFileName, content: activeFile.content, language, mode };
-    setFiles(prev => [...prev, newFile]);
-    setActiveFileId(newId);
-    setIsSaveAsOpen(false);
-    setNewFileName("");
-    toast({ title: "File Saved As", description: `Created copy: ${newFileName}` });
-  };
-
-  const handleRename = (id: string, nextName: string) => {
-    if (nextName && nextName.trim()) {
-      const file = files.find(f => f.id === id);
-      const { language, mode } = detectLanguage(nextName, file?.content || "");
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, name: nextName, language, mode } : f));
-    }
+  const handleUpdateFile = (id: string, updates: Partial<FileEntry>) => {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
   const simulatePipeline = async (action: () => Promise<string>) => {
     setIsLoading(true);
-    setAiOutput("");
+    setAiOutput('');
+    setPipelineStep(0); // Context
+    await new Promise(r => setTimeout(r, 600));
+    setPipelineStep(1); // Expand
+    await new Promise(r => setTimeout(r, 600));
+    setPipelineStep(2); // Generate
     
-    for (let i = 0; i < 5; i++) {
-      setPipelineStep(i);
-      await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
-      if (i === 2) {
-        try {
-          const result = await action();
-          const diffResult = result.split('\n').map(l => `+ ${l}`).join('\n');
-          setAiOutput(diffResult);
-        } catch (error) {
-          toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
-          setPipelineStep(-1);
-          setIsLoading(false);
-          return;
-        }
-      }
+    try {
+      const result = await action();
+      setPipelineStep(3); // Normalize
+      await new Promise(r => setTimeout(r, 600));
+      setPipelineStep(4); // Diff
+      setAiOutput(result);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'AI Error', description: error.message || 'Generation failed.' });
+      setPipelineStep(-1);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setPipelineStep(5);
-    setIsLoading(false);
   };
 
-  const handleGenerate = (promptText: string, context?: string[]) => {
+  const handleGenerate = (promptText: string) => {
     setPromptHistory(prev => [promptText, ...prev]);
-    simulatePipeline(async () => {
-      const isSelectionOnly = context?.includes("Selection Only");
-      const targetText = isSelectionOnly ? selection : activeFile.content;
-      
-      if (isSelectionOnly && !selection) {
-        throw new Error("No text selected for refinement.");
-      }
+    const useSelection = activeContextChips.includes('SELECTION ONLY');
+    const targetText = useSelection ? selection : activeFile.content;
 
-      if (selection || isSelectionOnly) {
-        const res = await refineSelectedText({ selectedText: targetText || selection, refinementPrompt: promptText });
+    if (useSelection && !selection) {
+      toast({ variant: 'destructive', title: 'Selection Required', description: 'Please select text to refine.' });
+      return;
+    }
+
+    simulatePipeline(async () => {
+      if (selection || useSelection) {
+        const res = await refineSelectedText({ selectedText: targetText, refinementPrompt: promptText });
         return res.refinedText;
       } else {
         const res = await generateNewContentFromPrompt({ prompt: promptText });
@@ -263,22 +157,24 @@ export default function CatalystCanvas() {
   const handleAIAction = (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => {
     if (action === 'format') {
       simulatePipeline(async () => {
-        const targetContent = selection || activeFile.content;
-        const res = await formatContent({ content: targetContent, language: activeFile.language, mode: activeFile.mode });
+        const res = await formatContent({ 
+          content: selection || activeFile.content, 
+          language: activeFile.language, 
+          mode: activeFile.mode 
+        });
         return res.formattedContent;
       });
     } else {
       simulatePipeline(async () => {
-        const promptMap = {
+        const actionMap = {
           explain: 'explain',
           fix: 'fix_or_improve',
           optimize: 'fix_or_improve',
           summarize: 'explain'
         } as const;
-        
         const res = await explainOrFixSelectedCode({
           codeSnippet: selection || activeFile.content,
-          action: promptMap[action as keyof typeof promptMap] || 'explain',
+          action: actionMap[action] || 'explain',
           language: activeFile.language
         });
         return res.explanationOrFix;
@@ -287,291 +183,150 @@ export default function CatalystCanvas() {
   };
 
   const applyAIChange = () => {
-    const cleanOutput = aiOutput.split('\n').map(l => l.startsWith('+ ') ? l.substring(2) : l).join('\n');
-    
     if (selection) {
-      updateActiveFileContent(activeFile.content.replace(selection, cleanOutput));
+      handleUpdateFile(activeFile.id, { 
+        content: activeFile.content.replace(selection, aiOutput) 
+      });
     } else {
-      updateActiveFileContent(cleanOutput);
+      handleUpdateFile(activeFile.id, { content: aiOutput });
     }
-    setAiOutput("");
-    setSelection("");
+    setAiOutput('');
     setPipelineStep(-1);
-    toast({ title: "Applied", description: "AI changes integrated into editor." });
+    toast({ title: 'Implementation Merged', description: 'AI changes applied successfully.' });
   };
-
-  const toggleTab = (tab: SidebarTab) => {
-    if (sidebarTab === tab) {
-      setIsExplorerOpen(!isExplorerOpen);
-    } else {
-      setSidebarTab(tab);
-      setIsExplorerOpen(true);
-    }
-  };
-
-  const filteredSearchFiles = files.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    f.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-        {/* App Sidebar (Icon Bar) */}
-        <div className="w-16 flex flex-col items-center py-6 gap-6 border-r bg-card/60 backdrop-blur-md z-30">
+      <div className="flex h-screen w-full overflow-hidden bg-[#15181D] text-[#E8ECF5]">
+        {/* Main Sidebar */}
+        <div className="w-16 flex flex-col items-center py-6 gap-6 border-r border-[#2A3149] bg-[#1C2028] z-30">
           <div className="p-2 bg-[#B478EA] rounded-xl shadow-lg shadow-[#B478EA]/20">
             <Cpu className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1 flex flex-col gap-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("h-10 w-10 transition-colors", sidebarTab === "explorer" && isExplorerOpen ? "text-[#B478EA] bg-[#B478EA]/10" : "text-muted-foreground")} onClick={() => toggleTab("explorer")}><FolderOpen className="w-5 h-5" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Explorer</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("h-10 w-10 transition-colors", sidebarTab === "debug" && isExplorerOpen ? "text-destructive bg-destructive/10" : "text-muted-foreground")} onClick={() => toggleTab("debug")}><Bug className="w-5 h-5" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Diagnostics</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("h-10 w-10 transition-colors", sidebarTab === "search" && isExplorerOpen ? "text-blue-400 bg-blue-400/10" : "text-muted-foreground")} onClick={() => toggleTab("search")}><Search className="w-5 h-5" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Search</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("h-10 w-10 transition-colors", sidebarTab === "settings" && isExplorerOpen ? "text-amber-400 bg-amber-400/10" : "text-muted-foreground")} onClick={() => toggleTab("settings")}><Settings className="w-5 h-5" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Settings</TooltipContent>
-            </Tooltip>
+            <Button variant="ghost" size="icon" className={cn("h-10 w-10", sidebarTab === 'explorer' && "text-[#4775D1] bg-[#4775D1]/10")} onClick={() => setSidebarTab('explorer')}><FolderOpen className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" className={cn("h-10 w-10", sidebarTab === 'debug' && "text-[#F87171] bg-[#F87171]/10")} onClick={() => setSidebarTab('debug')}><Bug className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" className={cn("h-10 w-10", sidebarTab === 'search' && "text-[#4775D1] bg-[#4775D1]/10")} onClick={() => setSidebarTab('search')}><SearchCode className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" className={cn("h-10 w-10", sidebarTab === 'settings' && "text-[#4775D1] bg-[#4775D1]/10")} onClick={() => setSidebarTab('settings')}><Settings className="w-5 h-5" /></Button>
           </div>
-          <div className="flex flex-col gap-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground"><HelpCircle className="w-5 h-5" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Help</TooltipContent>
-            </Tooltip>
-            <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center cursor-pointer hover:bg-secondary/80 transition-colors">
-              <UserCircle className="w-6 h-6 text-muted-foreground" />
-            </div>
+          <div className="w-10 h-10 rounded-full bg-[#222837] border border-[#2A3149] flex items-center justify-center cursor-pointer hover:bg-[#2A3149] transition-colors">
+            <UserCircle className="w-6 h-6 text-[#8B93B0]" />
           </div>
         </div>
 
-        {/* Dynamic Sidebar Panel */}
-        <div className={cn("border-r bg-card/40 flex flex-col explorer-transition overflow-hidden", isExplorerOpen ? "w-80 opacity-100" : "w-0 opacity-0 border-none")}>
-          {sidebarTab === "explorer" && (
-            <>
-              <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[320px]">
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#B478EA] hover:bg-[#B478EA]/10" onClick={handleCreateFile}><FilePlus className="w-4 h-4" /></Button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[320px]">
-                {files.map(file => (
-                  <div key={file.id} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group cursor-pointer", activeFileId === file.id ? "bg-[#B478EA]/15 text-[#B478EA] border border-[#B478EA]/20" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent")} onClick={() => setActiveFileId(file.id)}>
-                    {file.mode === "code" ? (
-                      file.language === "Python" ? <FileCode className="w-4 h-4 text-emerald-400" /> :
-                      file.language === "SQL" || file.language === "PL/SQL" ? <FileCode className="w-4 h-4 text-blue-400" /> :
-                      <FileCode className="w-4 h-4" />
-                    ) : <FileText className="w-4 h-4" />}
-                    <span className="truncate flex-1 font-medium">{file.name}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteFile(file.id); }}><Trash2 className="w-3 h-3" /></Button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {sidebarTab === "debug" && (
-            <div className="min-w-[320px] h-full"><DebugPanel content={activeFile.content} language={activeFile.language} onFixAll={() => handleAIAction('fix')} /></div>
-          )}
-          {sidebarTab === "search" && (
-            <div className="min-w-[320px] h-full flex flex-col p-4 gap-4">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Search</span>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
-                <Input placeholder="Search project..." className="pl-10 bg-secondary/30 border-white/5" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              </div>
-              <ScrollArea className="flex-1">
-                <div className="space-y-2">
-                  {filteredSearchFiles.map(file => (
-                    <div key={file.id} className="p-3 rounded-xl border border-white/5 hover:border-[#B478EA]/30 bg-secondary/10 cursor-pointer transition-colors" onClick={() => setActiveFileId(file.id)}>
-                      <div className="text-[10px] font-bold text-foreground mb-1 flex items-center gap-2">
-                        {file.mode === "code" ? <FileCode className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                        {file.name}
-                      </div>
-                      <div className="text-[9px] text-muted-foreground line-clamp-2 italic">{file.content.substring(0, 100)}</div>
-                    </div>
-                  ))}
-                  {filteredSearchFiles.length === 0 && (
-                    <div className="py-20 text-center opacity-20 flex flex-col items-center">
-                      <Search className="w-8 h-8 mb-2" />
-                      <p className="text-[10px] font-bold uppercase tracking-widest">No results</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
-          {sidebarTab === "settings" && (
-            <div className="min-w-[320px] p-6 space-y-8">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Settings</span>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-60">
-                   <Settings className="w-3 h-3" /> Layout
-                </div>
-                <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-white/5">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-bold">Word Wrap</Label>
-                    <p className="text-[10px] text-muted-foreground">Wrap long lines of text</p>
-                  </div>
-                  <Button variant={wordWrap ? "default" : "outline"} size="sm" onClick={() => setWordWrap(!wordWrap)} className={cn("h-7 text-[10px] font-bold px-4 rounded-lg", wordWrap ? "bg-[#B478EA] hover:bg-[#B478EA]/90" : "border-white/10")}>
-                    {wordWrap ? "ON" : "OFF"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-60">
-                   <Palette className="w-3 h-3" /> Appearance
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Editor Text Color</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {editorColors.map((color) => (
-                      <Tooltip key={color.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => setEditorColor(color.id)}
-                            className={cn(
-                              "w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center",
-                              editorColor === color.id ? "border-[#B478EA] scale-110 shadow-lg shadow-[#B478EA]/20" : "border-transparent opacity-60 hover:opacity-100"
-                            )}
-                          >
-                            <div className={cn("w-6 h-6 rounded-full", color.color)} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{color.label}</TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col relative min-w-0">
-          <header className="h-16 border-b px-6 flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-20">
+        {/* Workspace Panels */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Global Header */}
+          <header className="h-16 border-b border-[#2A3149] px-6 flex items-center justify-between bg-[#1C2028]/80 backdrop-blur-md z-20">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#B478EA]" onClick={() => setIsExplorerOpen(!isExplorerOpen)}>
-                {isExplorerOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-              </Button>
               <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#B478EA]" />
-                <h1 className="font-headline font-bold text-lg tracking-tight text-[#B478EA]">Catalyst<span className="text-foreground">.</span>Canvas</h1>
+                <Sparkles className="w-5 h-5 text-[#B478EA]" />
+                <h1 className="font-headline font-bold text-lg tracking-tight">Catalyst<span className="text-[#B478EA]">.</span>Canvas</h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-8">
-              <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 bg-secondary/20 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <Type className="w-3.5 h-3.5 text-[#B478EA]/60" />
-                  <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Words</span><span className="text-[11px] font-mono font-bold">{stats.words}</span></div>
-                </div>
-                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <Hash className="w-3.5 h-3.5 text-[#B478EA]/60" />
-                  <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Chars</span><span className="text-[11px] font-mono font-bold">{stats.chars}</span></div>
-                </div>
-                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <List className="w-3.5 h-3.5 text-[#B478EA]/60" />
-                  <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Lines</span><span className="text-[11px] font-mono font-bold">{stats.lines}</span></div>
-                </div>
-                <div className="flex items-center gap-3"><Zap className="w-3.5 h-3.5 text-amber-400" /><Badge variant="outline" className="h-5 text-[8px] bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 uppercase font-bold tracking-widest">Gemini 2.5</Badge></div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#222837] rounded-full border border-[#2A3149]">
+                <Globe className="w-3.5 h-3.5 text-[#34D399]" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8B93B0]">Live Environment</span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className={cn("h-9 w-9 rounded-xl transition-all", isAiPanelOpen ? "text-[#B478EA] bg-[#B478EA]/10" : "text-muted-foreground")}
-                      onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Toggle AI Panel</TooltipContent>
-                </Tooltip>
-                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-[#B478EA] rounded-xl"><Share2 className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Share</TooltipContent></Tooltip>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-2 text-[10px] font-bold uppercase tracking-widest border-white/10 rounded-xl hover:bg-secondary"><Download className="w-3.5 h-3.5" />Export</Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-card border-white/10 w-48"><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileCode className="w-4 h-4 text-blue-400" />Project (.zip)</DropdownMenuItem><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileText className="w-4 h-4 text-emerald-400" />Text (.txt)</DropdownMenuItem><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileJson className="w-4 h-4 text-amber-400" />JSON Structure</DropdownMenuItem></DropdownMenuContent>
-                </DropdownMenu>
-                <Button onClick={() => toast({ title: "Saved", description: `${activeFile.name} changes committed.` })} className="h-9 gap-2 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[10px] font-bold uppercase tracking-widest px-4 rounded-xl shadow-lg shadow-[#B478EA]/20"><Save className="w-4 h-4" />Save</Button>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn("h-9 w-9 rounded-xl transition-all", isAiPanelOpen ? "text-[#4775D1] bg-[#4775D1]/10" : "text-[#8B93B0]")}
+                    onClick={toggleAiPanel}
+                  >
+                    {isAiPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle AI Panel</TooltipContent>
+              </Tooltip>
             </div>
           </header>
 
-          <main className="flex-1 flex min-h-0 overflow-hidden p-4 lg:p-6 gap-6">
-            <div className="flex-1 min-w-0">
+          {/* Editor & AI Console */}
+          <main className="flex-1 flex min-h-0 overflow-hidden relative">
+            {/* Left: Sidebar Content */}
+            <div className={cn("w-64 border-r border-[#2A3149] bg-[#1C2028]/40 transition-all overflow-hidden", sidebarTab === 'debug' ? 'w-80' : 'w-64')}>
+              {sidebarTab === 'explorer' && (
+                <div className="p-4 space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#4A5178]">Explorer</span>
+                  <div className="space-y-1">
+                    {files.map(f => (
+                      <div 
+                        key={f.id}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm flex items-center gap-3 cursor-pointer transition-colors",
+                          activeFileId === f.id ? "bg-[#4775D1]/10 text-[#4775D1]" : "text-[#8B93B0] hover:bg-[#222837]"
+                        )}
+                        onClick={() => setActiveFileId(f.id)}
+                      >
+                        <FolderOpen className="w-4 h-4" />
+                        <span className="truncate">{f.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {sidebarTab === 'debug' && (
+                <DebugPanel 
+                  content={activeFile.content} 
+                  language={activeFile.language} 
+                  onFixAll={() => handleAIAction('fix')} 
+                />
+              )}
+            </div>
+
+            {/* Middle: Editor */}
+            <div className="flex-1 relative flex flex-col min-w-0 bg-[#15181D]">
               <EditorSurface
-                fileName={activeFile.name}
-                content={activeFile.content}
-                onChange={updateActiveFileContent}
-                onSelectionChange={setSelection}
-                onStatsChange={setStats}
-                mode={activeFile.mode}
-                language={activeFile.language}
-                wordWrap={wordWrap}
-                editorColor={editorColor}
-                onRefine={(p) => p ? handleGenerate(p) : handleAIAction('format')}
-                onFormat={() => handleAIAction('format')}
-                onAIAction={handleAIAction}
-                onSave={() => toast({ title: "Saved", description: `${activeFile.name} saved.` })}
-                onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.').pop()}`); setIsSaveAsOpen(true); }}
-                onRename={(newName) => handleRename(activeFile.id, newName)}
-                onDelete={() => handleDeleteFile(activeFile.id)}
+                files={files}
+                activeFileId={activeFileId}
+                onFileSelect={setActiveFileId}
+                onFileClose={(id) => id !== activeFileId && setFiles(f => f.filter(x => x.id !== id))}
                 onNewFile={handleCreateFile}
+                content={activeFile.content}
+                onChange={(c) => handleUpdateFile(activeFile.id, { content: c })}
+                onSelectionChange={setSelection}
+                onStatsChange={setEditorStats}
+                onAIAction={handleAIAction}
+                onFormat={() => handleAIAction('format')}
+                onRefine={(p) => p ? handleGenerate(p) : handleAIAction('format')}
               />
             </div>
-            
-            <aside className={cn(
-              "hidden lg:flex flex-col h-full rounded-2xl overflow-hidden border bg-card/40 shadow-2xl backdrop-blur-sm explorer-transition",
-              isAiPanelOpen ? "w-[350px] opacity-100" : "w-0 opacity-0 border-none ml-0"
+
+            {/* Right: AI Panel */}
+            <div className={cn(
+              "border-l border-[#2A3149] bg-[#1C2028]/80 backdrop-blur-xl transition-all overflow-hidden",
+              isAiPanelOpen ? "w-[380px]" : "w-0 border-none"
             )}>
               <PromptConsole 
-                onGenerate={handleGenerate} 
+                onGenerate={handleGenerate}
                 onAction={handleAIAction}
-                isLoading={isLoading} 
+                isLoading={isLoading}
                 history={promptHistory}
-                onNewFile={handleCreateFile}
+                activeChips={activeContextChips}
+                onChipToggle={(chip) => setActiveContextChips(prev => 
+                  prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]
+                )}
               />
-            </aside>
+            </div>
           </main>
 
+          {/* Bottom: AI Output */}
           <AIOutputDisplay 
             output={aiOutput} 
+            originalContent={selection || activeFile.content}
             onAccept={applyAIChange} 
-            onReject={() => { setAiOutput(""); setPipelineStep(-1); }}
-            onRefine={() => handleGenerate("Refine this response for better quality and depth.")}
+            onReject={() => { setAiOutput(''); setPipelineStep(-1); }}
+            onRefine={() => handleGenerate(`Improve this result: ${aiOutput.substring(0, 50)}...`)}
             isLoading={isLoading}
             step={pipelineStep}
           />
         </div>
 
-        <Dialog open={isSaveAsOpen} onOpenChange={setIsSaveAsOpen}>
-          <DialogContent className="bg-card border-[#B478EA]/20">
-            <DialogHeader><DialogTitle className="text-[#B478EA] font-headline">Clone File</DialogTitle><DialogDescription>Enter a new name for this copy.</DialogDescription></DialogHeader>
-            <div className="py-4"><Label className="text-xs font-bold text-muted-foreground uppercase">New Name</Label><Input value={newFileName} onChange={(e) => setNewFileName(e.target.value)} className="mt-2" autoFocus /></div>
-            <DialogFooter><Button variant="ghost" onClick={() => setIsSaveAsOpen(false)}>Cancel</Button><Button onClick={handleSaveAs} className="bg-[#B478EA] hover:bg-[#B478EA]/90 text-white">Clone</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
         <Toaster />
       </div>
     </TooltipProvider>

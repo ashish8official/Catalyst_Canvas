@@ -1,30 +1,34 @@
 'use server';
+/**
+ * @fileOverview A professional code diagnostic flow for SQL, PL/SQL, and Python.
+ * Detects anti-patterns, performance risks, and logic errors using Gemini.
+ */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const DiagnoseCodeInputSchema = z.object({
-  content: z.string().describe('The code to diagnose.'),
-  language: z.string().describe('Language context: SQL, PL/SQL, Python, etc.'),
+  content: z.string().describe('The code or text content to analyze.'),
+  language: z.string().describe('The detected language context (SQL, PL/SQL, Python, etc.).'),
 });
-export type DiagnoseCodeInput = z.infer<typeof DiagnoseCodeInputSchema>;
 
 const DiagnosticIssueSchema = z.object({
   severity: z.enum(['error', 'warning', 'info']),
-  line: z.number().optional().describe('Approximate line number if identifiable.'),
-  message: z.string().describe('Short description of the issue.'),
-  suggestion: z.string().describe('Concrete fix or improvement suggestion.'),
+  line: z.number().optional().describe('The approximate line number of the issue.'),
+  message: z.string().describe('Clear description of the issue.'),
+  suggestion: z.string().describe('Actionable suggestion to fix the issue.'),
 });
 
 const DiagnoseCodeOutputSchema = z.object({
-  issues: z.array(DiagnosticIssueSchema).describe('List of detected issues.'),
-  summary: z.string().describe('One-line overall assessment.'),
+  issues: z.array(DiagnosticIssueSchema),
+  summary: z.string().describe('A one-sentence overall assessment.'),
+  healthScore: z.number().min(0).max(100).describe('A score from 0-100 reflecting code quality.'),
 });
+
+export type DiagnoseCodeInput = z.infer<typeof DiagnoseCodeInputSchema>;
 export type DiagnoseCodeOutput = z.infer<typeof DiagnoseCodeOutputSchema>;
 
-export async function diagnoseCode(
-  input: DiagnoseCodeInput
-): Promise<DiagnoseCodeOutput> {
+export async function diagnoseCode(input: DiagnoseCodeInput): Promise<DiagnoseCodeOutput> {
   return diagnoseCodeFlow(input);
 }
 
@@ -32,33 +36,27 @@ const prompt = ai.definePrompt({
   name: 'diagnoseCodePrompt',
   input: { schema: DiagnoseCodeInputSchema },
   output: { schema: DiagnoseCodeOutputSchema },
-  prompt: `You are a senior database engineer and systems architect.
+  prompt: `You are a world-class systems architect and database administrator.
+Analyze the following {{language}} code for architectural flaws, performance bottlenecks, and security risks.
 
-Analyze the following code and identify technical issues. 
+### Specifically for SQL/PL/SQL:
+- Identify missing column aliases in joins.
+- Flag potential full table scans (missing indexes or WHERE clauses).
+- Detect implicit commits or lack of transaction control.
+- Check for missing exception handling blocks.
+- Identify SQL injection vulnerabilities.
+- Flag inefficient subqueries.
 
-For SQL and PL/SQL specifically, look for:
-- Missing column aliases in complex joins.
-- Potential full table scans (missing WHERE clauses on large tables).
-- Implicit commits or lack of transaction control.
-- Missing exception handling blocks in PL/SQL.
-- Inefficient subqueries that could be JOINs.
-- SQL injection vulnerabilities.
+### For Python/General:
+- Detect PEP 8 violations and logic bugs.
+- Identify performance bottlenecks and unsafe operations.
 
-For other languages:
-- Logic errors, performance bottlenecks, and security risks.
+Provide a list of issues, a summary sentence, and a health score (0-100).
 
-Return a list of issues with:
-- severity: 'error' (breaks execution), 'warning' (bad practice/risk), or 'info' (style/suggestion).
-- line: approximate line number.
-- message: clear description.
-- suggestion: how to fix it.
-
-Also provide a one-sentence "summary" of the overall code health.
-
-Code ({{language}}):
-\`\`\`
+Code:
+"""
 {{{content}}}
-\`\`\``,
+"""`,
 });
 
 const diagnoseCodeFlow = ai.defineFlow(

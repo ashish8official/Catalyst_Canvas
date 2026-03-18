@@ -13,8 +13,9 @@ import {
   Loader2, 
   CheckCircle, 
   Sparkles,
+  ArrowRight,
   Activity,
-  ArrowRight
+  Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,32 +26,10 @@ interface DebugPanelProps {
   onFixAll: () => void;
 }
 
-type Issue = DiagnoseCodeOutput['issues'][number];
-
-const severityConfig = {
-  error: { 
-    icon: AlertCircle, 
-    color: 'text-destructive', 
-    badge: 'bg-destructive/10 text-destructive border-destructive/20',
-    item: 'bg-destructive/5 border-destructive/10 hover:border-destructive/30'
-  },
-  warning: { 
-    icon: AlertTriangle, 
-    color: 'text-amber-500', 
-    badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    item: 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/30'
-  },
-  info: { 
-    icon: Info, 
-    color: 'text-blue-400', 
-    badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    item: 'bg-blue-500/5 border-blue-500/10 hover:border-blue-500/30'
-  },
-};
-
 export function DebugPanel({ content, language, onFixAll }: DebugPanelProps) {
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<DiagnoseCodeOutput['issues']>([]);
   const [summary, setSummary] = useState('');
+  const [score, setScore] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasRun, setHasRun] = useState(false);
 
@@ -62,147 +41,121 @@ export function DebugPanel({ content, language, onFixAll }: DebugPanelProps) {
       const result = await diagnoseCode({ content, language });
       setIssues(result.issues);
       setSummary(result.summary);
+      setScore(result.healthScore);
     } catch (e) {
-      setSummary('Diagnosis failed. Please check your connection and try again.');
+      setSummary('Audit failed. Please retry.');
       setIssues([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const errorCount = issues.filter(i => i.severity === 'error').length;
-  const warningCount = issues.filter(i => i.severity === 'warning').length;
+  const getScoreColor = (s: number) => {
+    if (s > 80) return 'text-[#34D399]';
+    if (s > 50) return 'text-[#F59E0B]';
+    return 'text-[#F87171]';
+  };
 
   return (
-    <div className="flex flex-col h-full bg-transparent overflow-hidden">
+    <div className="flex flex-col h-full bg-[#1C2028]">
       {/* Header */}
-      <div className="p-6 border-b flex items-center justify-between bg-secondary/10">
+      <div className="p-6 border-b border-[#2A3149] flex items-center justify-between bg-[#222837]/30">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-destructive/15 border border-destructive/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
-            <Bug className="w-4 h-4 text-destructive" />
-          </div>
-          <h2 className="font-headline font-bold text-sm tracking-widest uppercase text-foreground">Diagnostics</h2>
+          <Bug className="w-4 h-4 text-[#F87171]" />
+          <h2 className="font-headline font-bold text-sm tracking-[0.2em] uppercase">Diagnostics</h2>
         </div>
-        <div className="flex items-center gap-2">
-          {hasRun && !isLoading && (
-            <Badge variant="outline" className="text-[10px] font-mono border-white/10 uppercase px-2">
-              {issues.length} Issues Found
-            </Badge>
-          )}
+        <div className="flex gap-1">
+          <Badge className="bg-[#F87171]/10 text-[#F87171] border-[#F87171]/20 text-[9px]">{issues.filter(i => i.severity === 'error').length}</Badge>
+          <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20 text-[9px]">{issues.filter(i => i.severity === 'warning').length}</Badge>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          {/* Main Action */}
+        <div className="p-6 space-y-8">
+          {/* Health Score Ring */}
+          {hasRun && !isLoading && score !== null && (
+            <div className="flex flex-col items-center justify-center p-8 bg-[#15181D] rounded-[2rem] border border-[#2A3149] shadow-inner">
+              <div className="relative w-24 h-24 mb-4">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="48" cy="48" r="40" fill="transparent" stroke="#2A3149" strokeWidth="8" />
+                  <circle 
+                    cx="48" cy="48" r="40" fill="transparent" 
+                    stroke="currentColor" strokeWidth="8" 
+                    strokeDasharray={251.2} 
+                    strokeDashoffset={251.2 * (1 - score / 100)}
+                    className={cn("transition-all duration-1000", getScoreColor(score))}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={cn("text-2xl font-headline font-bold", getScoreColor(score))}>{score}</span>
+                  <span className="text-[8px] font-bold text-[#4A5178] uppercase">Health</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-[#8B93B0] text-center italic leading-relaxed">"{summary}"</p>
+            </div>
+          )}
+
+          {/* Action Button */}
           <Button
             onClick={runDiagnosis}
             disabled={isLoading || !content.trim()}
-            className="w-full h-12 text-[10px] font-bold uppercase tracking-[0.2em] gap-3 bg-secondary/40 hover:bg-secondary/60 border border-white/5 rounded-2xl transition-all active:scale-95 group shadow-lg"
-            variant="ghost"
+            className="w-full h-12 gap-3 bg-[#F87171]/10 hover:bg-[#F87171]/20 text-[#F87171] border border-[#F87171]/20 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                Auditing Workspace...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                Run AI Architecture Audit
-              </>
-            )}
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            {isLoading ? "Analyzing with Gemini..." : "Run AI Architecture Audit"}
           </Button>
 
-          {/* Initial State */}
+          {/* Empty State */}
           {!hasRun && !isLoading && (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-40">
-              <div className="p-5 rounded-full bg-secondary/20 border border-white/5">
-                <Activity className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-center px-12 leading-loose">
-                Initiate a deep scan to identify SQL anti-patterns and logic risks.
-              </p>
+            <div className="py-20 flex flex-col items-center justify-center opacity-20 gap-4">
+              <Activity className="w-12 h-12" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-center px-10">Initiate deep scan for SQL anti-patterns & risks</p>
             </div>
           )}
 
-          {/* Summary Box */}
-          {hasRun && !isLoading && summary && (
-            <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20 text-[11px] text-foreground/80 italic leading-relaxed shadow-inner">
-              <div className="flex items-center gap-2 mb-2 text-primary font-bold uppercase tracking-tighter not-italic">
-                <Sparkles className="w-3 h-3" />
-                Architect's Verdict
-              </div>
-              "{summary}"
-            </div>
-          )}
-
-          {/* Empty State / Success */}
+          {/* Clean State */}
           {hasRun && !isLoading && issues.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-4 animate-in fade-in zoom-in duration-500">
-              <div className="p-4 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <CheckCircle className="w-8 h-8 text-emerald-500" />
-              </div>
-              <div className="text-center">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-500 mb-1">Audit Clear</p>
-                <p className="text-[10px] text-muted-foreground px-10">No critical issues detected in the current context.</p>
-              </div>
+            <div className="py-12 flex flex-col items-center justify-center gap-4 text-[#34D399]">
+              <CheckCircle className="w-12 h-12" />
+              <p className="text-[10px] font-bold uppercase tracking-widest">Audit Clear: No issues found</p>
             </div>
           )}
 
           {/* Issues List */}
-          <div className="space-y-3">
-            {issues.map((issue, i) => {
-              const cfg = severityConfig[issue.severity];
-              const Icon = cfg.icon;
-              return (
-                <div 
-                  key={i} 
-                  className={cn(
-                    'p-5 rounded-2xl border text-[11px] space-y-4 transition-all animate-in slide-in-from-right-5 duration-300', 
-                    cfg.item
-                  )}
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className={cn('h-5 text-[8px] font-bold uppercase tracking-widest border-none', cfg.badge)}>
-                      <Icon className="w-2.5 h-2.5 mr-1.5" />
-                      {issue.severity}
-                    </Badge>
-                    {issue.line && (
-                      <span className="text-[10px] font-mono text-muted-foreground/40">Line {issue.line}</span>
-                    )}
-                  </div>
-                  
-                  <p className="text-foreground/90 leading-relaxed font-medium">{issue.message}</p>
-                  
-                  <div className="bg-background/40 p-3 rounded-xl border border-white/5 space-y-2">
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-primary uppercase tracking-tighter">
-                      <ArrowRight className="w-3 h-3" />
-                      AI Recommended Resolution
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed italic">{issue.suggestion}</p>
-                  </div>
+          <div className="space-y-4">
+            {issues.map((issue, i) => (
+              <div key={i} className={cn(
+                "p-4 rounded-2xl border bg-[#15181D]/40 space-y-3 transition-all animate-in slide-in-from-right-5",
+                issue.severity === 'error' ? 'border-[#F87171]/20' : issue.severity === 'warning' ? 'border-[#F59E0B]/20' : 'border-[#4775D1]/20'
+              )} style={{ animationDelay: `${i * 100}ms` }}>
+                <div className="flex items-center justify-between">
+                  <Badge className={cn(
+                    "text-[8px] font-bold uppercase tracking-widest px-2",
+                    issue.severity === 'error' ? 'bg-[#F87171]/10 text-[#F87171]' : issue.severity === 'warning' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-[#4775D1]/10 text-[#4775D1]'
+                  )}>
+                    {issue.severity}
+                  </Badge>
+                  {issue.line && <span className="text-[9px] font-mono text-[#4A5178]">Line {issue.line}</span>}
                 </div>
-              );
-            })}
+                <p className="text-[11px] font-bold text-[#E8ECF5] leading-relaxed">{issue.message}</p>
+                <div className="flex gap-2 text-[10px] text-[#8B93B0] leading-relaxed">
+                  <span className="text-[#B478EA] shrink-0">💡</span>
+                  <p className="italic">{issue.suggestion}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </ScrollArea>
 
-      {/* Footer Fix All */}
       {issues.length > 0 && !isLoading && (
-        <div className="p-6 border-t bg-secondary/5 mt-auto">
+        <div className="p-6 border-t border-[#2A3149] bg-[#222837]/30">
           <Button 
             onClick={onFixAll} 
-            className="w-full h-12 gap-3 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-[#B478EA]/20 transition-all active:scale-95"
+            className="w-full h-11 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-[#B478EA]/20"
           >
-            <Sparkles className="w-4 h-4" />
-            Apply AI Architecture Fixes
+            <Sparkles className="w-3.5 h-3.5 mr-2" /> Apply AI Resolution
           </Button>
-          <p className="text-[8px] text-center mt-3 text-muted-foreground uppercase tracking-widest opacity-40">
-            Fixes will be queued and applied as a single operation
-          </p>
         </div>
       )}
     </div>
