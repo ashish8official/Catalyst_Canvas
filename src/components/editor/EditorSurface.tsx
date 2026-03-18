@@ -17,7 +17,8 @@ import {
   History,
   Code,
   Check,
-  X
+  X,
+  Plus
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -44,6 +45,7 @@ interface EditorSurfaceProps {
   onSaveAs: () => void;
   onRename: (newName: string) => void;
   onDelete: () => void;
+  onNewFile: () => void;
 }
 
 export function EditorSurface({
@@ -59,6 +61,7 @@ export function EditorSurface({
   onSaveAs,
   onRename,
   onDelete,
+  onNewFile,
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -152,6 +155,14 @@ export function EditorSurface({
               <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
             </div>
           )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10 ml-2" onClick={onNewFile}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New File</TooltipContent>
+          </Tooltip>
           <div className="h-4 w-px bg-white/10 mx-1" />
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{language} Mode</span>
         </div>
@@ -189,6 +200,10 @@ export function EditorSurface({
             <DropdownMenuContent align="end" className="w-56 bg-card border-primary/20 shadow-2xl">
               <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">File Actions</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuItem onClick={onNewFile} className="gap-2 text-xs py-2 cursor-pointer">
+                <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                New File
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onSave} className="gap-2 text-xs py-2 cursor-pointer">
                 <Save className="w-3.5 h-3.5 text-primary" />
                 Save Changes

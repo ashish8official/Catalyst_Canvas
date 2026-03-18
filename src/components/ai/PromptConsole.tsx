@@ -1,21 +1,36 @@
+
 "use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, History, Zap, Terminal, Send, ArrowRight, Type, CheckCircle2, Box, BrainCircuit } from "lucide-react";
+import { 
+  Sparkles, 
+  History, 
+  Zap, 
+  Terminal, 
+  Send, 
+  ArrowRight, 
+  Type, 
+  CheckCircle2, 
+  Box, 
+  BrainCircuit,
+  Plus
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PromptConsoleProps {
   onGenerate: (prompt: string) => void;
   isLoading: boolean;
   history: string[];
+  onNewFile: () => void;
 }
 
-export function PromptConsole({ onGenerate, isLoading, history }: PromptConsoleProps) {
+export function PromptConsole({ onGenerate, isLoading, history, onNewFile }: PromptConsoleProps) {
   const [prompt, setPrompt] = useState("");
   const [activeChips, setActiveChips] = useState<string[]>(["Active File", "Schema"]);
 
@@ -50,7 +65,17 @@ export function PromptConsole({ onGenerate, isLoading, history }: PromptConsoleP
           </div>
           <h2 className="font-headline font-bold text-sm tracking-widest uppercase text-foreground">AI Assistant</h2>
         </div>
-        <Badge variant="outline" className="text-[9px] font-mono border-primary/20 text-primary uppercase">Catalyst v4.2</Badge>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg" onClick={onNewFile}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New File</TooltipContent>
+          </Tooltip>
+          <Badge variant="outline" className="text-[9px] font-mono border-primary/20 text-primary uppercase">Catalyst v4.2</Badge>
+        </div>
       </div>
 
       <Tabs defaultValue="console" className="flex-1 flex flex-col min-h-0">

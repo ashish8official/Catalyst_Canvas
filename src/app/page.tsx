@@ -134,7 +134,7 @@ export default function CatalystCanvas() {
     setActiveFileId(newId);
     setSidebarTab("explorer");
     setIsExplorerOpen(true);
-    toast({ title: "File Created", description: `Created ${newFile.name} (${language})` });
+    toast({ title: "File Created", description: `Created ${newFile.name} (Plain Text)` });
   };
 
   const handleDeleteFile = (id: string) => {
@@ -509,6 +509,7 @@ export default function CatalystCanvas() {
                 onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.').pop()}`); setIsSaveAsOpen(true); }}
                 onRename={(newName) => handleRename(activeFile.id, newName)}
                 onDelete={() => handleDeleteFile(activeFile.id)}
+                onNewFile={handleCreateFile}
               />
             </div>
             
@@ -517,6 +518,7 @@ export default function CatalystCanvas() {
                 onGenerate={handleGenerate} 
                 isLoading={isLoading} 
                 history={promptHistory}
+                onNewFile={handleCreateFile}
               />
             </aside>
           </main>
