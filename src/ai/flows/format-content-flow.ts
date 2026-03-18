@@ -35,26 +35,24 @@ Mode: {{{mode}}}
 
 ### Instructions:
 1. If the mode is 'code' and language is SQL or PL/SQL:
-   - Apply strict beautification: 2-space consistent indentation.
-   - Force UPPERCASE for all SQL reserved keywords (e.g., SELECT, FROM, WHERE, BEGIN, END, EXCEPTION, COMMIT).
-   - Align clauses (e.g., align all JOIN and WHERE conditions) for maximum vertical readability.
-   - Ensure semicolons are correctly placed.
-   - **IMPORTANT**: If multiple queries are present, ensure they are separated by exactly one blank line for clarity.
-   - For PL/SQL: Ensure standard block structure (DECLARE, BEGIN, EXCEPTION, END;).
+   - Apply industry-standard beautification (compact yet readable).
+   - Use 2-space consistent indentation.
+   - Force UPPERCASE for all SQL reserved keywords (SELECT, FROM, WHERE, etc.).
+   - Do NOT force every single column or parameter onto a new line if they fit reasonably on one. Only break lines for major clauses or long lists.
+   - Ensure multiple queries are separated by exactly one blank line.
+   - For PL/SQL: Maintain standard block structure (DECLARE, BEGIN, EXCEPTION, END;).
 
 2. If the mode is 'code' and language is Python:
    - Apply PEP 8 style guidelines.
    - Ensure consistent 4-space indentation.
-   - Ensure logical blocks are separated by blank lines.
-   - Optimize imports and ensure standard naming conventions (snake_case for variables/functions).
+   - Use industry-standard line lengths and block separation.
 
 3. If the mode is 'text':
    - Correct all grammar, spelling, and punctuation.
-   - Improve flow and clarity without losing the author's intent.
-   - Use professional terminology where appropriate.
-   - If the text looks like technical documentation or notes, use Markdown headers (#, ##) and bullet points to add structure.
+   - Improve flow and clarity while maintaining professional tone.
+   - Use Markdown for structure (# headers, - bullets) if appropriate.
 
-4. Return ONLY the formatted content. Do not include any meta-commentary, explanations, or backticks around the result.
+4. Return ONLY the formatted content. No conversational meta-commentary.
 
 Content to Format:
 """

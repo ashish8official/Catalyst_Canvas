@@ -9,19 +9,16 @@ import {
   Save, 
   MoreHorizontal, 
   Database, 
-  Copy, 
   Trash2, 
   Edit2, 
-  FilePlus, 
-  History,
-  Code,
+  Plus, 
+  Terminal,
   Check,
   X,
-  Plus,
-  Terminal
+  FileCode
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +36,7 @@ interface EditorSurfaceProps {
   onSelectionChange: (selection: string) => void;
   mode: "text" | "code";
   language: string;
+  wordWrap: boolean;
   onRefine: (prompt?: string) => void;
   onFormat: () => void;
   onSave: () => void;
@@ -55,6 +53,7 @@ export function EditorSurface({
   onSelectionChange,
   mode,
   language,
+  wordWrap,
   onRefine,
   onFormat,
   onSave,
@@ -185,7 +184,7 @@ export function EditorSurface({
                 AI Format
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Beautify with AI</TooltipContent>
+            <TooltipContent>Format Code</TooltipContent>
           </Tooltip>
 
           <Button 
@@ -203,39 +202,17 @@ export function EditorSurface({
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-card border-primary/20 shadow-2xl">
-              <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">File Actions</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56 bg-card border-primary/20">
+              <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Actions</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuItem onClick={onNewFile} className="gap-2 text-xs py-2 cursor-pointer">
-                <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                New File
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onSave} className="gap-2 text-xs py-2 cursor-pointer">
-                <Save className="w-3.5 h-3.5 text-primary" />
-                Save Changes
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={onSaveAs} className="gap-2 text-xs py-2 cursor-pointer">
-                <Copy className="w-3.5 h-3.5 text-blue-400" />
                 Save As / Clone
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsRenaming(true)} className="gap-2 text-xs py-2 cursor-pointer">
-                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
                 Rename File
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
               <DropdownMenuItem onClick={onDelete} className="gap-2 text-xs py-2 cursor-pointer text-destructive focus:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
                 Delete File
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Editor View</DropdownMenuLabel>
-              <DropdownMenuItem className="gap-2 text-xs py-2 cursor-pointer">
-                <History className="w-3.5 h-3.5 text-purple-400" />
-                View History
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 text-xs py-2 cursor-pointer">
-                <Code className="w-3.5 h-3.5 text-emerald-400" />
-                Toggle Line Numbers
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -258,10 +235,11 @@ export function EditorSurface({
             onChange={handleTextChange}
             onMouseUp={handleSelection}
             onKeyUp={handleSelection}
-            placeholder={mode === "code" ? "-- Start writing code..." : "Start writing notes..."}
+            placeholder={mode === "code" ? "-- Write your code here..." : "Write your notes here..."}
             className={cn(
               "w-full h-full p-8 bg-transparent resize-none focus:outline-none focus:ring-0 leading-relaxed caret-primary transition-all scrollbar-hide",
-              mode === "code" ? "font-code text-[13px]" : "font-body text-[15px]"
+              mode === "code" ? "font-code text-[13px]" : "font-body text-[15px]",
+              wordWrap ? "whitespace-pre-wrap" : "whitespace-pre"
             )}
             spellCheck={false}
           />
@@ -270,8 +248,6 @@ export function EditorSurface({
             <span>{language}</span>
             <span className="h-3 w-px bg-white/10" />
             <span>Col: {content.length}</span>
-            <span className="h-3 w-px bg-white/10" />
-            <span>UTF-8</span>
           </div>
         </div>
       </div>

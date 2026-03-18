@@ -60,23 +60,16 @@ const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
     name: "query.sql",
-    content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;\nSELECT * FROM logs WHERE level = 'ERROR';",
+    content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;\n\nSELECT * FROM logs WHERE level = 'ERROR';",
     language: "SQL",
     mode: "code"
   },
   {
     id: "2",
     name: "main.py",
-    content: "def greet(name):\n  print(f'Hello, {name}!')\n\nif __name__ == '__main__':\n  greet('World')",
+    content: "def greet(name):\n    print(f'Hello, {name}!')\n\nif __name__ == '__main__':\n    greet('World')",
     language: "Python",
     mode: "code"
-  },
-  {
-    id: "3",
-    name: "notes.txt",
-    content: "todo: optimize the user status update procedure. add logging. validate input parameters.",
-    language: "Plain Text",
-    mode: "text"
   }
 ];
 
@@ -98,6 +91,7 @@ export default function CatalystCanvas() {
   const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [wordWrap, setWordWrap] = useState(true);
 
   // Dialog State
   const [isSaveAsOpen, setIsSaveAsOpen] = useState(false);
@@ -120,7 +114,7 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    const name = `untitled-${files.length + 1}.txt`;
+    const name = `document-${files.length + 1}.txt`;
     const { language, mode } = getDetailsFromFileName(name);
 
     const newFile: FileEntry = {
@@ -134,7 +128,7 @@ export default function CatalystCanvas() {
     setActiveFileId(newId);
     setSidebarTab("explorer");
     setIsExplorerOpen(true);
-    toast({ title: "File Created", description: `Created ${newFile.name} (${language})` });
+    toast({ title: "File Created", description: `Created ${newFile.name}` });
   };
 
   const handleDeleteFile = (id: string) => {
@@ -170,16 +164,10 @@ export default function CatalystCanvas() {
     toast({ title: "File Saved As", description: `Created copy: ${newFileName}` });
   };
 
-  const handleRename = (id: string, nextName?: string) => {
-    const targetFile = files.find(f => f.id === id);
-    if (!targetFile) return;
-
-    const finalName = typeof nextName === 'string' ? nextName : prompt("Rename file to:", targetFile.name);
-    
-    if (finalName && finalName.trim() && finalName !== targetFile.name) {
-      const { language, mode } = getDetailsFromFileName(finalName);
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, name: finalName, language, mode } : f));
-      toast({ title: "File Renamed", description: `Updated to ${finalName}` });
+  const handleRename = (id: string, nextName: string) => {
+    if (nextName && nextName.trim()) {
+      const { language, mode } = getDetailsFromFileName(nextName);
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, name: nextName, language, mode } : f));
     }
   };
 
@@ -196,15 +184,8 @@ export default function CatalystCanvas() {
     
     try {
       const result = await action();
-      
-      setPipelineStep(3); 
-      await new Promise(r => setTimeout(r, 400));
-      
-      setPipelineStep(4); 
-      await new Promise(r => setTimeout(r, 400));
-      
-      setAiOutput(result);
       setPipelineStep(5); 
+      setAiOutput(result);
     } catch (error) {
       toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
       setPipelineStep(-1);
@@ -213,14 +194,14 @@ export default function CatalystCanvas() {
     }
   };
 
-  const handleGenerate = (prompt: string) => {
-    setPromptHistory(prev => [prompt, ...prev]);
+  const handleGenerate = (promptText: string) => {
+    setPromptHistory(prev => [promptText, ...prev]);
     simulatePipeline(async () => {
       if (selection) {
-        const res = await refineSelectedText({ selectedText: selection, refinementPrompt: prompt });
+        const res = await refineSelectedText({ selectedText: selection, refinementPrompt: promptText });
         return res.refinedText;
       } else {
-        const res = await generateNewContentFromPrompt({ prompt });
+        const res = await generateNewContentFromPrompt({ prompt: promptText });
         return res.generatedContent;
       }
     });
@@ -303,7 +284,7 @@ export default function CatalystCanvas() {
                   <Search className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Global Search</TooltipContent>
+              <TooltipContent side="right">Search</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -326,7 +307,7 @@ export default function CatalystCanvas() {
                   <HelpCircle className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Documentation</TooltipContent>
+              <TooltipContent side="right">Help</TooltipContent>
             </Tooltip>
             <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center cursor-pointer hover:bg-secondary/80 transition-colors">
               <UserCircle className="w-6 h-6 text-muted-foreground" />
@@ -344,17 +325,10 @@ export default function CatalystCanvas() {
           {sidebarTab === "explorer" && (
             <>
               <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[320px]">
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project Explorer</span>
-                <div className="flex items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={handleCreateFile}>
-                        <FilePlus className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>New File</TooltipContent>
-                  </Tooltip>
-                </div>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={handleCreateFile}>
+                  <FilePlus className="w-4 h-4" />
+                </Button>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[320px]">
                 {files.map(file => (
@@ -363,24 +337,15 @@ export default function CatalystCanvas() {
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group cursor-pointer",
                       activeFileId === file.id 
-                        ? "bg-primary/15 text-primary border border-primary/20 shadow-sm" 
+                        ? "bg-primary/15 text-primary border border-primary/20" 
                         : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
                     )}
                     onClick={() => setActiveFileId(file.id)}
                   >
                     {file.mode === "code" ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                    <span className="truncate flex-1 text-left font-medium">{file.name}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" size="icon" className="h-6 w-6 hover:text-primary" 
-                        onClick={(e) => { e.stopPropagation(); handleRename(file.id); }}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                      <Button 
-                        variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteFile(file.id); }}
-                      >
+                    <span className="truncate flex-1 font-medium">{file.name}</span>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteFile(file.id); }}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
@@ -407,20 +372,13 @@ export default function CatalystCanvas() {
               </div>
               <div className="p-4 space-y-4">
                 <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search project files..." 
-                    className="pl-10 bg-secondary/30 border-white/5 focus-visible:ring-primary/40"
+                    placeholder="Search project..." 
+                    className="pl-10 bg-secondary/30 border-white/5"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                </div>
-                <div className="space-y-4 pt-4">
-                  <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Search Results</p>
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
-                    <Search className="w-10 h-10" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest">No results found</p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -429,29 +387,20 @@ export default function CatalystCanvas() {
           {sidebarTab === "settings" && (
             <div className="min-w-[320px] h-full flex flex-col">
               <div className="p-4 border-b bg-secondary/20">
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Environment Settings</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Preferences</span>
               </div>
               <div className="p-6 space-y-6">
                 <div className="space-y-4">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Engine</label>
-                  <div className="p-3 rounded-xl bg-secondary/30 border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">Gemini 2.5 Flash</span>
-                      <Badge variant="secondary" className="text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">ACTIVE</Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Optimized for rapid generation and diagnostic accuracy.</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Editor Preferences</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Editor</label>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between p-2 hover:bg-secondary/20 rounded-lg cursor-pointer transition-colors">
-                      <span className="text-xs">Line Numbers</span>
-                      <div className="w-8 h-4 bg-primary rounded-full relative"><div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full" /></div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 hover:bg-secondary/20 rounded-lg cursor-pointer transition-colors">
+                    <div 
+                      className="flex items-center justify-between p-2 hover:bg-secondary/20 rounded-lg cursor-pointer transition-colors"
+                      onClick={() => setWordWrap(!wordWrap)}
+                    >
                       <span className="text-xs">Word Wrap</span>
-                      <div className="w-8 h-4 bg-secondary rounded-full relative"><div className="absolute left-1 top-1 w-2 h-2 bg-white/40 rounded-full" /></div>
+                      <div className={cn("w-8 h-4 rounded-full relative transition-colors", wordWrap ? "bg-primary" : "bg-secondary")}>
+                        <div className={cn("absolute top-1 w-2 h-2 bg-white rounded-full transition-all", wordWrap ? "right-1" : "left-1")} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -466,7 +415,7 @@ export default function CatalystCanvas() {
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" size="icon" 
-                className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
                 onClick={() => setIsExplorerOpen(!isExplorerOpen)}
               >
                 {isExplorerOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
@@ -477,20 +426,6 @@ export default function CatalystCanvas() {
                   Catalyst<span className="text-foreground">.</span>Canvas
                 </h1>
               </div>
-              <div className="h-4 w-px bg-border" />
-              <div 
-                className="flex items-center gap-2 bg-secondary/40 px-3 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-secondary/60 transition-colors"
-                onClick={() => handleRename(activeFile.id)}
-              >
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">File:</span>
-                <span className="text-[10px] font-semibold text-primary/80 truncate max-w-[200px]">{activeFile.name}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-               <div className="hidden sm:flex items-center bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Active Workspace</span>
-               </div>
             </div>
           </header>
 
@@ -503,9 +438,10 @@ export default function CatalystCanvas() {
                 onSelectionChange={setSelection}
                 mode={activeFile.mode}
                 language={activeFile.language}
+                wordWrap={wordWrap}
                 onRefine={(p) => p ? handleGenerate(p) : handleFormat()}
                 onFormat={handleFormat}
-                onSave={() => toast({ title: "File Saved", description: `Successfully committed ${activeFile.name}` })}
+                onSave={() => toast({ title: "Saved", description: `${activeFile.name} has been saved.` })}
                 onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.').pop()}`); setIsSaveAsOpen(true); }}
                 onRename={(newName) => handleRename(activeFile.id, newName)}
                 onDelete={() => handleDeleteFile(activeFile.id)}
@@ -527,7 +463,7 @@ export default function CatalystCanvas() {
             output={aiOutput} 
             onAccept={applyAIChange} 
             onReject={() => { setAiOutput(""); setPipelineStep(-1); }}
-            onRefine={() => handleGenerate("Iterate on this suggestion for better clarity.")}
+            onRefine={() => handleGenerate("Refine this response for better clarity.")}
             isLoading={isLoading}
             step={pipelineStep}
           />
@@ -535,30 +471,24 @@ export default function CatalystCanvas() {
 
         {/* Save As Dialog */}
         <Dialog open={isSaveAsOpen} onOpenChange={setIsSaveAsOpen}>
-          <DialogContent className="sm:max-w-[425px] bg-card border-primary/20">
+          <DialogContent className="bg-card border-primary/20">
             <DialogHeader>
-              <DialogTitle className="text-primary font-headline">Save As / Clone File</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                Enter a new name for your file. Language mode will be detected automatically.
-              </DialogDescription>
+              <DialogTitle className="text-primary font-headline">Clone File</DialogTitle>
+              <DialogDescription>Enter a new name for your file.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="filename" className="text-right text-xs uppercase font-bold text-muted-foreground">
-                  Name
-                </Label>
-                <Input
-                  id="filename"
-                  value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                  className="col-span-3 bg-secondary/30 border-white/10"
-                  autoFocus
-                />
-              </div>
+            <div className="py-4">
+              <Label htmlFor="filename" className="text-xs font-bold text-muted-foreground uppercase">New Name</Label>
+              <Input
+                id="filename"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                className="mt-2"
+                autoFocus
+              />
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsSaveAsOpen(false)} className="text-xs uppercase font-bold">Cancel</Button>
-              <Button onClick={handleSaveAs} className="bg-primary hover:bg-primary/90 text-xs uppercase font-bold px-6">Save Changes</Button>
+              <Button variant="ghost" onClick={() => setIsSaveAsOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveAs} className="bg-primary hover:bg-primary/90">Clone</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
