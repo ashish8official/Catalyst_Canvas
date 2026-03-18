@@ -348,30 +348,30 @@ export default function CatalystCanvas() {
                 <Badge variant="outline" className="text-[9px] border-[#B478EA]/40 text-[#B478EA] uppercase px-1.5 h-5">Gemini 2.5</Badge>
               </div>
               
-              <div className="flex items-center gap-1 p-1 bg-[#222837] rounded-xl border border-[#2A3149]">
+              <div className="flex items-center gap-2 p-1.5 bg-[#15181D] rounded-xl border border-[#2A3149]">
                 <Button 
-                  variant="ghost" 
+                  variant="outline"
                   size="sm" 
-                  className="h-8 text-[10px] font-bold uppercase text-[#8B93B0] hover:text-[#4775D1]"
+                  className="h-8 border-[#2A3149] bg-[#222837] hover:bg-[#2A3149] text-[10px] font-bold uppercase text-[#E8ECF5] transition-all"
                   onClick={handleExport}
                 >
-                  <FileDown className="w-3.5 h-3.5 mr-2" /> Export
+                  <FileDown className="w-3.5 h-3.5 mr-1.5" /> Export
                 </Button>
                 <Button 
-                  variant="ghost" 
+                  variant="outline"
                   size="sm" 
-                  className="h-8 text-[10px] font-bold uppercase text-[#8B93B0] hover:text-[#4775D1]"
+                  className="h-8 border-[#2A3149] bg-[#222837] hover:bg-[#2A3149] text-[10px] font-bold uppercase text-[#E8ECF5] transition-all"
                   onClick={handleSave}
                 >
-                  <Save className="w-3.5 h-3.5 mr-2" /> Save
+                  <Save className="w-3.5 h-3.5 mr-1.5" /> Save
                 </Button>
                 <Button 
                   size="sm" 
-                  className="h-8 bg-[#4775D1] hover:bg-[#4775D1]/90 text-white text-[10px] font-bold uppercase px-4 rounded-lg shadow-lg shadow-[#4775D1]/10"
+                  className="h-8 bg-[#4775D1] hover:bg-[#4775D1]/90 text-white text-[10px] font-bold uppercase px-4 rounded-lg shadow-lg shadow-[#4775D1]/10 transition-all"
                   onClick={handlePublish}
                   disabled={isPublishing}
                 >
-                  {isPublishing ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-2" />} 
+                  {isPublishing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1.5" />} 
                   Publish
                 </Button>
               </div>
