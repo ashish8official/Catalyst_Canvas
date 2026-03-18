@@ -106,7 +106,7 @@ export function PromptConsole({
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border transition-all",
                         activeChips.includes(c) 
-                          ? "bg-[#B478EA]/10 border-[#B478EA] text-[#B478EA] shadow-[0_0_15px_rgba(180,120,234,0.1)]" 
+                          ? "bg-[#B478EA]/10 border-[#B478EA] text-[#B478EA] shadow-[0_0_15px_rgba(180,120,234,0.15)]" 
                           : "bg-[#15181D] border-[#2A3149] text-[#4A5178] hover:border-[#8B93B0]"
                       )}
                     >
@@ -200,7 +200,7 @@ export function PromptConsole({
                   <div key={i} className="p-4 bg-[#15181D] border border-[#2A3149] rounded-xl hover:border-[#B478EA]/30 transition-all cursor-pointer group" onClick={() => setPrompt(h)}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[8px] font-bold text-[#4A5178] uppercase tracking-widest">Prompt Log</span>
-                      <history className="w-3 h-3 text-[#B478EA] opacity-0 group-hover:opacity-100" />
+                      <History className="w-3 h-3 text-[#B478EA] opacity-0 group-hover:opacity-100" />
                     </div>
                     <p className="text-[11px] text-[#8B93B0] line-clamp-2 leading-relaxed italic">"{h}"</p>
                   </div>
