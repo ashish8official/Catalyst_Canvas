@@ -115,7 +115,6 @@ export default function CatalystCanvas() {
   const detectLanguage = (name: string, content: string) => {
     const ext = name.split('.').pop()?.toLowerCase() || '';
     
-    // 1. Extension Check
     if (ext === 'sql') return { language: 'SQL', mode: 'code' as const };
     if (ext === 'plsql') return { language: 'PL/SQL', mode: 'code' as const };
     if (ext === 'py') return { language: 'Python', mode: 'code' as const };
@@ -123,7 +122,6 @@ export default function CatalystCanvas() {
     if (ext === 'json') return { language: 'JSON', mode: 'code' as const };
     if (ext === 'txt') return { language: 'Plain Text', mode: 'text' as const };
 
-    // 2. Content Sniffing (Fallback)
     const snippet = content.substring(0, 500).toUpperCase();
     const sqlKeywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'CREATE ', 'DROP ', 'ALTER ', 'TABLE '];
     const plsqlKeywords = ['DECLARE', 'BEGIN', 'EXCEPTION', 'PROCEDURE ', 'FUNCTION '];
@@ -208,19 +206,29 @@ export default function CatalystCanvas() {
   const simulatePipeline = async (action: () => Promise<string>) => {
     setIsLoading(true);
     setAiOutput("");
-    setPipelineStep(0); 
-    await new Promise(r => setTimeout(r, 600));
-    setPipelineStep(2); 
-    try {
-      const result = await action();
-      setPipelineStep(5); 
-      setAiOutput(result);
-    } catch (error) {
-      toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
-      setPipelineStep(-1);
-    } finally {
-      setIsLoading(false);
+    
+    // Step-by-step pipeline animation
+    for (let i = 0; i < 5; i++) {
+      setPipelineStep(i);
+      await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
+      // Trigger the actual action during the LLM Processing step (2)
+      if (i === 2) {
+        try {
+          const result = await action();
+          // Simulate simple diff for visualization
+          const diffResult = result.split('\n').map(l => `+ ${l}`).join('\n');
+          setAiOutput(diffResult);
+        } catch (error) {
+          toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
+          setPipelineStep(-1);
+          setIsLoading(false);
+          return;
+        }
+      }
     }
+    
+    setPipelineStep(5);
+    setIsLoading(false);
   };
 
   const handleGenerate = (promptText: string, context?: string[]) => {
@@ -263,14 +271,18 @@ export default function CatalystCanvas() {
   };
 
   const applyAIChange = () => {
+    // Strip the simulated diff markers
+    const cleanOutput = aiOutput.split('\n').map(l => l.startsWith('+ ') ? l.substring(2) : l).join('\n');
+    
     if (selection) {
-      updateActiveFileContent(activeFile.content.replace(selection, aiOutput));
+      updateActiveFileContent(activeFile.content.replace(selection, cleanOutput));
     } else {
-      updateActiveFileContent(aiOutput);
+      updateActiveFileContent(cleanOutput);
     }
     setAiOutput("");
     setSelection("");
     setPipelineStep(-1);
+    toast({ title: "Applied", description: "AI changes integrated into editor." });
   };
 
   const toggleTab = (tab: SidebarTab) => {
@@ -340,12 +352,16 @@ export default function CatalystCanvas() {
             <>
               <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[320px]">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={handleCreateFile}><FilePlus className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#B478EA] hover:bg-[#B478EA]/10" onClick={handleCreateFile}><FilePlus className="w-4 h-4" /></Button>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[320px]">
                 {files.map(file => (
                   <div key={file.id} className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all group cursor-pointer", activeFileId === file.id ? "bg-[#B478EA]/15 text-[#B478EA] border border-[#B478EA]/20" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent")} onClick={() => setActiveFileId(file.id)}>
-                    {file.mode === "code" ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                    {file.mode === "code" ? (
+                      file.language === "Python" ? <FileCode className="w-4 h-4 text-emerald-400" /> :
+                      file.language === "SQL" || file.language === "PL/SQL" ? <FileCode className="w-4 h-4 text-blue-400" /> :
+                      <FileCode className="w-4 h-4" />
+                    ) : <FileText className="w-4 h-4" />}
                     <span className="truncate flex-1 font-medium">{file.name}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteFile(file.id); }}><Trash2 className="w-3 h-3" /></Button>
                   </div>
@@ -359,15 +375,27 @@ export default function CatalystCanvas() {
           {sidebarTab === "search" && (
             <div className="min-w-[320px] h-full flex flex-col p-4 gap-4">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Search</span>
-              <Input placeholder="Search project..." className="bg-secondary/30 border-white/5" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+                <Input placeholder="Search project..." className="pl-10 bg-secondary/30 border-white/5" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              </div>
               <ScrollArea className="flex-1">
                 <div className="space-y-2">
                   {filteredSearchFiles.map(file => (
-                    <div key={file.id} className="p-3 rounded-lg border border-white/5 hover:border-[#B478EA]/30 bg-secondary/10 cursor-pointer" onClick={() => setActiveFileId(file.id)}>
-                      <div className="text-[10px] font-bold text-foreground mb-1">{file.name}</div>
+                    <div key={file.id} className="p-3 rounded-xl border border-white/5 hover:border-[#B478EA]/30 bg-secondary/10 cursor-pointer transition-colors" onClick={() => setActiveFileId(file.id)}>
+                      <div className="text-[10px] font-bold text-foreground mb-1 flex items-center gap-2">
+                        {file.mode === "code" ? <FileCode className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                        {file.name}
+                      </div>
                       <div className="text-[9px] text-muted-foreground line-clamp-2 italic">{file.content.substring(0, 100)}</div>
                     </div>
                   ))}
+                  {filteredSearchFiles.length === 0 && (
+                    <div className="py-20 text-center opacity-20 flex flex-col items-center">
+                      <Search className="w-8 h-8 mb-2" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest">No results</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -375,10 +403,13 @@ export default function CatalystCanvas() {
           {sidebarTab === "settings" && (
             <div className="min-w-[320px] p-6 space-y-6">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Settings</span>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Word Wrap</Label>
-                  <Button variant={wordWrap ? "default" : "outline"} size="sm" onClick={() => setWordWrap(!wordWrap)} className="h-7 text-[10px]">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-white/5">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-bold">Word Wrap</Label>
+                    <p className="text-[10px] text-muted-foreground">Wrap long lines of text</p>
+                  </div>
+                  <Button variant={wordWrap ? "default" : "outline"} size="sm" onClick={() => setWordWrap(!wordWrap)} className={cn("h-7 text-[10px] font-bold px-4 rounded-lg", wordWrap ? "bg-[#B478EA] hover:bg-[#B478EA]/90" : "border-white/10")}>
                     {wordWrap ? "ON" : "OFF"}
                   </Button>
                 </div>
@@ -391,7 +422,7 @@ export default function CatalystCanvas() {
         <div className="flex-1 flex flex-col relative min-w-0">
           <header className="h-16 border-b px-6 flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-20">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setIsExplorerOpen(!isExplorerOpen)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#B478EA]" onClick={() => setIsExplorerOpen(!isExplorerOpen)}>
                 {isExplorerOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
               </Button>
               <div className="flex items-center gap-2">
@@ -403,18 +434,18 @@ export default function CatalystCanvas() {
             <div className="flex items-center gap-8">
               <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 bg-secondary/20 rounded-2xl border border-white/5">
                 <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <Type className="w-3.5 h-3.5 text-primary/60" />
+                  <Type className="w-3.5 h-3.5 text-[#B478EA]/60" />
                   <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Words</span><span className="text-[11px] font-mono font-bold">{stats.words}</span></div>
                 </div>
                 <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <Hash className="w-3.5 h-3.5 text-primary/60" />
+                  <Hash className="w-3.5 h-3.5 text-[#B478EA]/60" />
                   <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Chars</span><span className="text-[11px] font-mono font-bold">{stats.chars}</span></div>
                 </div>
                 <div className="flex items-center gap-3"><Zap className="w-3.5 h-3.5 text-amber-400" /><Badge variant="outline" className="h-5 text-[8px] bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 uppercase font-bold tracking-widest">Gemini 2.5</Badge></div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary rounded-xl"><Share2 className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Share</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-[#B478EA] rounded-xl"><Share2 className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Share</TooltipContent></Tooltip>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-2 text-[10px] font-bold uppercase tracking-widest border-white/10 rounded-xl hover:bg-secondary"><Download className="w-3.5 h-3.5" />Export</Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-card border-white/10 w-48"><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileCode className="w-4 h-4 text-blue-400" />Project (.zip)</DropdownMenuItem><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileText className="w-4 h-4 text-emerald-400" />Text (.txt)</DropdownMenuItem><DropdownMenuItem className="text-xs gap-2 py-2.5"><FileJson className="w-4 h-4 text-amber-400" />JSON Structure</DropdownMenuItem></DropdownMenuContent>
@@ -459,17 +490,17 @@ export default function CatalystCanvas() {
             output={aiOutput} 
             onAccept={applyAIChange} 
             onReject={() => { setAiOutput(""); setPipelineStep(-1); }}
-            onRefine={() => handleGenerate("Refine this response for better quality.")}
+            onRefine={() => handleGenerate("Refine this response for better quality and depth.")}
             isLoading={isLoading}
             step={pipelineStep}
           />
         </div>
 
         <Dialog open={isSaveAsOpen} onOpenChange={setIsSaveAsOpen}>
-          <DialogContent className="bg-card border-primary/20">
-            <DialogHeader><DialogTitle className="text-primary font-headline">Clone File</DialogTitle><DialogDescription>Enter a new name.</DialogDescription></DialogHeader>
+          <DialogContent className="bg-card border-[#B478EA]/20">
+            <DialogHeader><DialogTitle className="text-[#B478EA] font-headline">Clone File</DialogTitle><DialogDescription>Enter a new name for this copy.</DialogDescription></DialogHeader>
             <div className="py-4"><Label className="text-xs font-bold text-muted-foreground uppercase">New Name</Label><Input value={newFileName} onChange={(e) => setNewFileName(e.target.value)} className="mt-2" autoFocus /></div>
-            <DialogFooter><Button variant="ghost" onClick={() => setIsSaveAsOpen(false)}>Cancel</Button><Button onClick={handleSaveAs} className="bg-primary hover:bg-primary/90">Clone</Button></DialogFooter>
+            <DialogFooter><Button variant="ghost" onClick={() => setIsSaveAsOpen(false)}>Cancel</Button><Button onClick={handleSaveAs} className="bg-[#B478EA] hover:bg-[#B478EA]/90 text-white">Clone</Button></DialogFooter>
           </DialogContent>
         </Dialog>
         <Toaster />
