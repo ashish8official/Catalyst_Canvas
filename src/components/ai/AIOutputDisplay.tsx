@@ -18,6 +18,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AIOutputDisplayProps {
   output: string;
@@ -157,15 +158,20 @@ export function AIOutputDisplay({ output, onAccept, onReject, onRefine, isLoadin
             
             <div className="flex items-center gap-4">
               <TooltipProvider>
-                <Button 
-                  variant="ghost" size="icon" 
-                  className="h-11 w-11 text-muted-foreground hover:text-[#B478EA] rounded-2xl transition-all" 
-                  onClick={() => {
-                    navigator.clipboard.writeText(output);
-                  }}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" size="icon" 
+                      className="h-11 w-11 text-muted-foreground hover:text-[#B478EA] rounded-2xl transition-all" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(output);
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy to Clipboard</TooltipContent>
+                </Tooltip>
               </TooltipProvider>
               
               <Button 
