@@ -15,6 +15,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AIOutputDisplayProps {
   output: string;
@@ -40,10 +41,10 @@ export function AIOutputDisplay({
   // Keyboard Shortcuts: Cmd+Enter (Accept), Esc (Reject)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (output || isLoading) {
+      if ((output || isLoading) && step !== -1) {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
           e.preventDefault();
-          onAccept();
+          if (!isLoading && output) onAccept();
         }
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -53,7 +54,7 @@ export function AIOutputDisplay({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onAccept, onReject, output, isLoading]);
+  }, [onAccept, onReject, output, isLoading, step]);
 
   if (step === -1 && !output && !isLoading) return null;
 
@@ -120,6 +121,7 @@ export function AIOutputDisplay({
                 size="sm"
                 className="h-9 px-4 border-[#2A3149] hover:bg-[#222837] text-[10px] font-bold uppercase rounded-lg"
                 onClick={onRefine}
+                disabled={isLoading || !output}
               >
                 <RefreshCw className="w-3.5 h-3.5 mr-2" /> Refine
               </Button>
@@ -127,6 +129,7 @@ export function AIOutputDisplay({
                 size="sm"
                 className="h-9 px-6 bg-[#B478EA] hover:bg-[#B478EA]/90 text-white text-[10px] font-bold uppercase rounded-lg shadow-lg shadow-[#B478EA]/20"
                 onClick={onAccept}
+                disabled={isLoading || !output}
               >
                 <Check className="w-3.5 h-3.5 mr-2" /> Accept Implementation
               </Button>

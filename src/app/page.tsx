@@ -111,7 +111,7 @@ export default function CatalystCanvas() {
   const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [activeContextChips, setActiveContextChips] = useState<string[]>(['FULL DOC']);
-  const [generationContext, setGenerationContext] = useState<{ text: string; isSelection: boolean } | null>(null);
+  const [generationContext, setGenerationContext] = useState<{ text: string; isSelection: boolean; fileId: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [editorStats, setEditorStats] = useState({ 
@@ -187,7 +187,7 @@ export default function CatalystCanvas() {
       return;
     }
 
-    setGenerationContext({ text: targetText, isSelection: useSelection });
+    setGenerationContext({ text: targetText, isSelection: useSelection, fileId: activeFile.id });
 
     simulatePipeline(async () => {
       if (useSelection) {
@@ -203,7 +203,7 @@ export default function CatalystCanvas() {
   const handleAIAction = (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => {
     const useSelection = !!selection;
     const targetText = useSelection ? selection : activeFile.content;
-    setGenerationContext({ text: targetText, isSelection: useSelection });
+    setGenerationContext({ text: targetText, isSelection: useSelection, fileId: activeFile.id });
 
     if (action === 'format') {
       simulatePipeline(async () => {
@@ -233,12 +233,23 @@ export default function CatalystCanvas() {
   };
 
   const applyAIChange = () => {
-    if (generationContext?.isSelection && generationContext.text) {
-      const newContent = activeFile.content.replace(generationContext.text, aiOutput);
-      handleUpdateFile(activeFile.id, { content: newContent });
-    } else {
-      handleUpdateFile(activeFile.id, { content: aiOutput });
+    if (!aiOutput || isLoading) return;
+
+    const targetFileId = generationContext?.fileId || activeFileId;
+    const targetFile = files.find(f => f.id === targetFileId);
+
+    if (!targetFile) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Target file not found.' });
+      return;
     }
+
+    if (generationContext?.isSelection && generationContext.text) {
+      const newContent = targetFile.content.replace(generationContext.text, aiOutput);
+      handleUpdateFile(targetFileId, { content: newContent });
+    } else {
+      handleUpdateFile(targetFileId, { content: aiOutput });
+    }
+
     setAiOutput('');
     setPipelineStep(-1);
     setGenerationContext(null);
@@ -263,7 +274,6 @@ export default function CatalystCanvas() {
   };
 
   const handleSave = () => {
-    // Mock save functionality
     toast({
       title: "Workspace Saved",
       description: "All changes have been synced locally.",
