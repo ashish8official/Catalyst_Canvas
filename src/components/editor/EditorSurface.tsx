@@ -32,6 +32,11 @@ interface EditorSurfaceProps {
   onAIAction: (action: any) => void;
   onFormat: () => void;
   onRefine: (prompt?: string) => void;
+  settings?: {
+    textColor: string;
+    fontSize: number;
+    fontFamily: string;
+  };
 }
 
 export function EditorSurface({
@@ -46,7 +51,8 @@ export function EditorSurface({
   onStatsChange,
   onAIAction,
   onFormat,
-  onRefine
+  onRefine,
+  settings
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showActionBar, setShowActionBar] = useState(false);
@@ -89,7 +95,14 @@ export function EditorSurface({
 
     if (selectedText.trim()) {
       const rect = textareaRef.current.getBoundingClientRect();
-      setBarPosition({ top: rect.top + 100, left: rect.left + rect.width / 2 });
+      const scrollTop = textareaRef.current.scrollTop;
+      
+      // Calculate a rough position for the floating bar
+      // In a real Monaco editor this is easier, but for a textarea we approximate
+      setBarPosition({ 
+        top: rect.top + 60, 
+        left: rect.left + rect.width / 2 
+      });
       setShowActionBar(true);
     } else {
       setShowActionBar(false);
@@ -114,17 +127,19 @@ export function EditorSurface({
           <div 
             key={f.id}
             className={cn(
-              "flex items-center h-full px-4 gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer border-r border-[#2A3149] transition-all relative group",
+              "flex items-center h-full px-4 gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer border-r border-[#2A3149] transition-all relative group shrink-0",
               activeFileId === f.id ? "bg-[#15181D] text-[#E8ECF5]" : "text-[#4A5178] hover:bg-[#222837] hover:text-[#8B93B0]"
             )}
             onClick={() => onFileSelect(f.id)}
           >
             {f.mode === 'code' ? <FileCode className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
             <span>{f.name}</span>
-            <X 
-              className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-[#F87171] transition-opacity" 
-              onClick={(e) => { e.stopPropagation(); onFileClose(f.id); }} 
-            />
+            {files.length > 1 && (
+              <X 
+                className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-[#F87171] transition-opacity ml-2" 
+                onClick={(e) => { e.stopPropagation(); onFileClose(f.id); }} 
+              />
+            )}
             {activeFileId === f.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4775D1]" />}
           </div>
         ))}
@@ -184,8 +199,13 @@ export function EditorSurface({
           onKeyDown={(e) => {
             if (e.key === 'Escape') setShowActionBar(false);
           }}
+          style={{ 
+            color: settings?.textColor || '#E8ECF5',
+            fontSize: `${settings?.fontSize || 14}px`,
+            fontFamily: settings?.fontFamily || 'JetBrains Mono, monospace'
+          }}
           className={cn(
-            "flex-1 bg-transparent p-8 resize-none focus:outline-none font-mono text-sm leading-relaxed caret-[#4775D1] text-[#E8ECF5] placeholder-[#4A5178]",
+            "flex-1 bg-transparent p-8 resize-none focus:outline-none leading-relaxed caret-[#4775D1] placeholder-[#4A5178]",
             badge.label === 'Text' ? 'whitespace-pre-wrap' : 'whitespace-pre'
           )}
           spellCheck={false}
