@@ -34,7 +34,8 @@ import {
   Hash,
   FileCode,
   FileText,
-  FileJson
+  FileJson,
+  Palette
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,7 @@ export default function CatalystCanvas() {
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [wordWrap, setWordWrap] = useState(true);
+  const [editorColor, setEditorColor] = useState("default");
   const [stats, setStats] = useState<DocStats>({ words: 0, chars: 0, lines: 0 });
 
   // Dialog State
@@ -118,6 +120,14 @@ export default function CatalystCanvas() {
 
   // Active File Derived State
   const activeFile = useMemo(() => files.find(f => f.id === activeFileId) || files[0], [files, activeFileId]);
+
+  const editorColors = [
+    { id: "default", label: "Catalyst White", color: "bg-foreground" },
+    { id: "blue", label: "Intelligent Blue", color: "bg-[#4775D1]" },
+    { id: "emerald", label: "Emerald City", color: "bg-emerald-400" },
+    { id: "amber", label: "Amber Glow", color: "bg-amber-400" },
+    { id: "purple", label: "Catalyst Purple", color: "bg-[#B478EA]" },
+  ];
 
   // Language Detection Logic
   const detectLanguage = (name: string, content: string) => {
@@ -403,9 +413,13 @@ export default function CatalystCanvas() {
             </div>
           )}
           {sidebarTab === "settings" && (
-            <div className="min-w-[320px] p-6 space-y-6">
+            <div className="min-w-[320px] p-6 space-y-8">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Settings</span>
-              <div className="space-y-6">
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-60">
+                   <Settings className="w-3 h-3" /> Layout
+                </div>
                 <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-2xl border border-white/5">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-bold">Word Wrap</Label>
@@ -414,6 +428,33 @@ export default function CatalystCanvas() {
                   <Button variant={wordWrap ? "default" : "outline"} size="sm" onClick={() => setWordWrap(!wordWrap)} className={cn("h-7 text-[10px] font-bold px-4 rounded-lg", wordWrap ? "bg-[#B478EA] hover:bg-[#B478EA]/90" : "border-white/10")}>
                     {wordWrap ? "ON" : "OFF"}
                   </Button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-60">
+                   <Palette className="w-3 h-3" /> Appearance
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Editor Text Color</Label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {editorColors.map((color) => (
+                      <Tooltip key={color.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setEditorColor(color.id)}
+                            className={cn(
+                              "w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center",
+                              editorColor === color.id ? "border-[#B478EA] scale-110 shadow-lg shadow-[#B478EA]/20" : "border-transparent opacity-60 hover:opacity-100"
+                            )}
+                          >
+                            <div className={cn("w-6 h-6 rounded-full", color.color)} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{color.label}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -468,6 +509,7 @@ export default function CatalystCanvas() {
                 mode={activeFile.mode}
                 language={activeFile.language}
                 wordWrap={wordWrap}
+                editorColor={editorColor}
                 onRefine={(p) => p ? handleGenerate(p) : handleAIAction('format')}
                 onFormat={() => handleAIAction('format')}
                 onAIAction={handleAIAction}

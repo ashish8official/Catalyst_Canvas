@@ -47,6 +47,7 @@ interface EditorSurfaceProps {
   mode: "text" | "code";
   language: string;
   wordWrap: boolean;
+  editorColor: string;
   onRefine: (prompt?: string) => void;
   onFormat: () => void;
   onAIAction: (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => void;
@@ -66,6 +67,7 @@ export function EditorSurface({
   mode,
   language,
   wordWrap,
+  editorColor,
   onRefine,
   onFormat,
   onAIAction,
@@ -153,6 +155,16 @@ export function EditorSurface({
     if (language === "JSON") return <FileJson className="w-3.5 h-3.5 text-amber-400" />;
     if (language === "Markdown") return <Hash className="w-3.5 h-3.5 text-[#B478EA]" />;
     return <FileText className="w-3.5 h-3.5 text-primary" />;
+  };
+
+  const getTextColorClass = () => {
+    switch(editorColor) {
+      case 'blue': return 'text-[#4775D1]';
+      case 'emerald': return 'text-emerald-400';
+      case 'amber': return 'text-amber-400';
+      case 'purple': return 'text-[#B478EA]';
+      default: return 'text-foreground';
+    }
   };
 
   return (
@@ -264,7 +276,7 @@ export function EditorSurface({
             className={cn(
               "w-full h-full p-8 bg-transparent resize-none focus:outline-none focus:ring-0 leading-relaxed caret-primary transition-all font-code text-[13px]",
               wordWrap ? "whitespace-pre-wrap" : "whitespace-pre",
-              language === "SQL" || language === "PL/SQL" ? "text-[#4775D1]" : "text-foreground"
+              getTextColorClass()
             )}
             spellCheck={false}
           />
