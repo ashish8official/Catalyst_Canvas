@@ -30,7 +30,8 @@ import {
   Edit2,
   Trash2,
   Save,
-  FilePlus
+  FilePlus,
+  MoreHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -118,7 +119,7 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    const name = `untitled-${files.length + 1}.txt`; // Default to .txt (Plain Text)
+    const name = `untitled-${files.length + 1}.txt`;
     const { language, mode } = getDetailsFromFileName(name);
 
     const newFile: FileEntry = {
@@ -363,7 +364,7 @@ export default function CatalystCanvas() {
                     onClick={() => setActiveFileId(file.id)}
                   >
                     {file.mode === "code" ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                    <span className="truncate flex-1 text-left">{file.name}</span>
+                    <span className="truncate flex-1 text-left font-medium">{file.name}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button 
                         variant="ghost" size="icon" className="h-6 w-6 hover:text-primary" 
@@ -472,7 +473,10 @@ export default function CatalystCanvas() {
                 </h1>
               </div>
               <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-2 bg-secondary/40 px-3 py-1 rounded-full border border-white/5">
+              <div 
+                className="flex items-center gap-2 bg-secondary/40 px-3 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-secondary/60 transition-colors"
+                onClick={() => handleRename(activeFile.id, activeFile.name)}
+              >
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">File:</span>
                 <span className="text-[10px] font-semibold text-primary/80 truncate max-w-[200px]">{activeFile.name}</span>
               </div>
@@ -498,6 +502,8 @@ export default function CatalystCanvas() {
                 onFormat={handleFormat}
                 onSave={() => toast({ title: "File Saved", description: `Successfully committed ${activeFile.name}` })}
                 onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.')[1]}`); setIsSaveAsOpen(true); }}
+                onRename={() => handleRename(activeFile.id, activeFile.name)}
+                onDelete={() => handleDeleteFile(activeFile.id)}
               />
             </div>
             

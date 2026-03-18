@@ -3,9 +3,29 @@
 import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { FileText, Braces, Save, MoreHorizontal, Database, Copy } from "lucide-react";
+import { 
+  FileText, 
+  Braces, 
+  Save, 
+  MoreHorizontal, 
+  Database, 
+  Copy, 
+  Trash2, 
+  Edit2, 
+  FilePlus, 
+  History,
+  Code
+} from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EditorSurfaceProps {
   fileName: string;
@@ -18,6 +38,8 @@ interface EditorSurfaceProps {
   onFormat: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }
 
 export function EditorSurface({
@@ -31,6 +53,8 @@ export function EditorSurface({
   onFormat,
   onSave,
   onSaveAs,
+  onRename,
+  onDelete,
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [lineCount, setLineCount] = useState(1);
@@ -69,9 +93,13 @@ export function EditorSurface({
       {/* Editor Toolbar */}
       <div className="flex items-center justify-between px-5 py-3 bg-secondary/20 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10">
+          <div 
+            className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-primary/40 transition-colors group"
+            onClick={onRename}
+          >
             {language === "SQL" || language === "PL/SQL" ? <Database className="w-3.5 h-3.5 text-blue-400" /> : <FileText className="w-3.5 h-3.5 text-primary" />}
             <span className="text-xs font-bold tracking-wide text-foreground/90">{fileName}</span>
+            <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
           </div>
           <div className="h-4 w-px bg-white/10 mx-1" />
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{language} Mode</span>
@@ -92,20 +120,6 @@ export function EditorSurface({
             <TooltipContent>Beautify with AI</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" size="sm" 
-                className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider border-white/5 hover:bg-white/5"
-                onClick={onSaveAs}
-              >
-                <Copy className="w-3.5 h-3.5" />
-                Save As
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Clone or Rename File</TooltipContent>
-          </Tooltip>
-
           <Button 
             size="sm" 
             className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold uppercase px-4 shadow-lg shadow-primary/20 transition-all active:scale-95"
@@ -114,9 +128,45 @@ export function EditorSurface({
             <Save className="w-3.5 h-3.5" />
             Save
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-secondary/60">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card border-primary/20 shadow-2xl">
+              <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">File Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuItem onClick={onSave} className="gap-2 text-xs py-2 cursor-pointer">
+                <Save className="w-3.5 h-3.5 text-primary" />
+                Save Changes
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onSaveAs} className="gap-2 text-xs py-2 cursor-pointer">
+                <Copy className="w-3.5 h-3.5 text-blue-400" />
+                Save As / Clone
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onRename} className="gap-2 text-xs py-2 cursor-pointer">
+                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                Rename File
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuItem onClick={onDelete} className="gap-2 text-xs py-2 cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete File
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Editor View</DropdownMenuLabel>
+              <DropdownMenuItem className="gap-2 text-xs py-2 cursor-pointer">
+                <History className="w-3.5 h-3.5 text-purple-400" />
+                View History
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 text-xs py-2 cursor-pointer">
+                <Code className="w-3.5 h-3.5 text-emerald-400" />
+                Toggle Line Numbers
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
