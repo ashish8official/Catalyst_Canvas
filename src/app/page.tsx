@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { EditorSurface } from "@/components/editor/EditorSurface";
 import { PromptConsole } from "@/components/ai/PromptConsole";
 import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
@@ -87,12 +87,17 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
+    const name = `new-file-${files.length + 1}.sql`;
+    const ext = `.${name.split('.').pop()}`;
+    const language = ext === '.plsql' ? 'PL/SQL' : ext === '.txt' ? 'Plain Text' : 'SQL';
+    const mode: "text" | "code" = ext === '.txt' ? 'text' : 'code';
+
     const newFile: FileEntry = {
       id: newId,
-      name: `new-file-${files.length + 1}.sql`,
+      name: name,
       content: "",
-      language: "SQL",
-      mode: "code"
+      language: language,
+      mode: mode
     };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newId);
@@ -174,6 +179,35 @@ export default function CatalystCanvas() {
     setPipelineStep(-1);
   };
 
+  // Auto-detect language when active file changes
+useEffect(() => {
+  const file = files.find(f => f.id === activeFileId);
+  if (!file) return;
+
+  const name = file.name.toLowerCase();
+  let detectedLanguage = file.language;
+  let detectedMode: "text" | "code" = file.mode;
+
+  if (name.endsWith('.sql')) {
+    detectedLanguage = 'SQL'; detectedMode = 'code';
+  } else if (name.endsWith('.plsql') || name.endsWith('.pls') || name.endsWith('.pks')) {
+    detectedLanguage = 'PL/SQL'; detectedMode = 'code';
+  } else if (name.endsWith('.txt') || name.endsWith('.md')) {
+    detectedLanguage = 'Plain Text'; detectedMode = 'text';
+  } else if (name.endsWith('.js') || name.endsWith('.ts')) {
+    detectedLanguage = 'JavaScript'; detectedMode = 'code';
+  }
+
+  // Only update if changed to avoid re-render loop
+  if (detectedLanguage !== file.language || detectedMode !== file.mode) {
+    setFiles(prev => prev.map(f =>
+      f.id === activeFileId
+        ? { ...f, language: detectedLanguage, mode: detectedMode }
+        : f
+    ));
+  }
+}, [activeFileId, files.find(f => f.id === activeFileId)?.name]);
+
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -247,18 +281,18 @@ export default function CatalystCanvas() {
         <div 
           className={cn(
             "border-r bg-card/40 flex flex-col explorer-transition overflow-hidden",
-            isExplorerOpen ? "w-72 opacity-100" : "w-0 opacity-0 border-none"
+            isExplorerOpen ? "w-80 opacity-100" : "w-0 opacity-0 border-none"
           )}
         >
           {sidebarTab === "explorer" ? (
             <>
-              <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[280px]">
+              <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[320px]">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project Explorer</span>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCreateFile}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[280px]">
+              <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[320px]">
                 {files.map(file => (
                   <button
                     key={file.id}
@@ -283,8 +317,12 @@ export default function CatalystCanvas() {
               </div>
             </>
           ) : (
-            <div className="min-w-[280px] h-full">
-              <DebugPanel onFixAll={() => handleGenerate("Refactor and fix all reported issues in this block.")} />
+            <div className="min-w-[320px] h-full">
+              <DebugPanel 
+                content={activeFile.content}
+                language={activeFile.language}
+                onFixAll={() => handleGenerate("Refactor and fix all issues identified in the diagnostic report.")} 
+              />
             </div>
           )}
         </div>
