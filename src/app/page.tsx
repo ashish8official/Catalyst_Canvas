@@ -21,12 +21,16 @@ import {
   PanelRightOpen,
   Sparkles,
   SearchCode,
-  Globe
+  Globe,
+  Save,
+  Share2,
+  FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DebugPanel } from '@/components/debug/DebugPanel';
+import { Badge } from '@/components/ui/badge';
 
 interface FileEntry {
   id: string;
@@ -79,6 +83,7 @@ export default function CatalystCanvas() {
   const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [activeContextChips, setActiveContextChips] = useState<string[]>(['FULL DOC']);
+  const [generationContext, setGenerationContext] = useState<{ text: string; isSelection: boolean } | null>(null);
   
   const [editorStats, setEditorStats] = useState({ 
     words: 0, 
@@ -143,8 +148,10 @@ export default function CatalystCanvas() {
       return;
     }
 
+    setGenerationContext({ text: targetText, isSelection: useSelection });
+
     simulatePipeline(async () => {
-      if (selection || useSelection) {
+      if (useSelection) {
         const res = await refineSelectedText({ selectedText: targetText, refinementPrompt: promptText });
         return res.refinedText;
       } else {
@@ -155,10 +162,14 @@ export default function CatalystCanvas() {
   };
 
   const handleAIAction = (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => {
+    const useSelection = !!selection;
+    const targetText = useSelection ? selection : activeFile.content;
+    setGenerationContext({ text: targetText, isSelection: useSelection });
+
     if (action === 'format') {
       simulatePipeline(async () => {
         const res = await formatContent({ 
-          content: selection || activeFile.content, 
+          content: targetText, 
           language: activeFile.language, 
           mode: activeFile.mode 
         });
@@ -173,7 +184,7 @@ export default function CatalystCanvas() {
           summarize: 'explain'
         } as const;
         const res = await explainOrFixSelectedCode({
-          codeSnippet: selection || activeFile.content,
+          codeSnippet: targetText,
           action: actionMap[action] || 'explain',
           language: activeFile.language
         });
@@ -183,15 +194,16 @@ export default function CatalystCanvas() {
   };
 
   const applyAIChange = () => {
-    if (selection) {
-      handleUpdateFile(activeFile.id, { 
-        content: activeFile.content.replace(selection, aiOutput) 
-      });
+    if (generationContext?.isSelection && generationContext.text) {
+      // Use the specific text that was targeted for generation
+      const newContent = activeFile.content.replace(generationContext.text, aiOutput);
+      handleUpdateFile(activeFile.id, { content: newContent });
     } else {
       handleUpdateFile(activeFile.id, { content: aiOutput });
     }
     setAiOutput('');
     setPipelineStep(-1);
+    setGenerationContext(null);
     toast({ title: 'Implementation Merged', description: 'AI changes applied successfully.' });
   };
 
@@ -217,28 +229,54 @@ export default function CatalystCanvas() {
         {/* Workspace Panels */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Global Header */}
-          <header className="h-16 border-b border-[#2A3149] px-6 flex items-center justify-between bg-[#1C2028]/80 backdrop-blur-md z-20">
-            <div className="flex items-center gap-4">
+          <header className="h-16 border-b border-[#2A3149] px-6 flex items-center justify-between bg-[#1C2028]/80 backdrop-blur-md z-20 sticky top-0">
+            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#B478EA]" />
                 <h1 className="font-headline font-bold text-lg tracking-tight">Catalyst<span className="text-[#B478EA]">.</span>Canvas</h1>
               </div>
+
+              <div className="hidden lg:flex items-center gap-6 text-[11px] font-mono text-[#4A5178] uppercase font-bold bg-[#15181D]/50 px-4 py-2 rounded-xl border border-[#2A3149]">
+                <div className="flex gap-2 items-center">
+                  <span className="text-[#8B93B0]">Words</span>
+                  <span className="text-[#E8ECF5]">{editorStats.words}</span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <span className="text-[#8B93B0]">Chars</span>
+                  <span className="text-[#E8ECF5]">{editorStats.chars}</span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <span className="text-[#8B93B0]">Lines</span>
+                  <span className="text-[#E8ECF5]">{editorStats.lines}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#222837] rounded-full border border-[#2A3149]">
-                <Globe className="w-3.5 h-3.5 text-[#34D399]" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8B93B0]">Live Environment</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#222837] rounded-lg border border-[#2A3149]">
+                <Badge variant="outline" className="text-[9px] border-[#B478EA]/40 text-[#B478EA] uppercase px-1.5 h-5">Gemini 2.5</Badge>
               </div>
+              
+              <div className="flex items-center gap-1 p-1 bg-[#222837] rounded-xl border border-[#2A3149]">
+                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase text-[#8B93B0] hover:text-[#4775D1]">
+                  <Share2 className="w-3.5 h-3.5 mr-2" /> Export
+                </Button>
+                <Button size="sm" className="h-8 bg-[#4775D1] hover:bg-[#4775D1]/90 text-white text-[10px] font-bold uppercase px-4 rounded-lg shadow-lg shadow-[#4775D1]/10">
+                  <Save className="w-3.5 h-3.5 mr-2" /> Save
+                </Button>
+              </div>
+
+              <div className="w-px h-6 bg-[#2A3149]" />
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={cn("h-9 w-9 rounded-xl transition-all", isAiPanelOpen ? "text-[#4775D1] bg-[#4775D1]/10" : "text-[#8B93B0]")}
+                    className={cn("h-10 w-10 rounded-xl transition-all", isAiPanelOpen ? "text-[#4775D1] bg-[#4775D1]/10 border-[#4775D1]/20" : "text-[#8B93B0]")}
                     onClick={toggleAiPanel}
                   >
-                    {isAiPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+                    {isAiPanelOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Toggle AI Panel</TooltipContent>
@@ -249,7 +287,7 @@ export default function CatalystCanvas() {
           {/* Editor & AI Console */}
           <main className="flex-1 flex min-h-0 overflow-hidden relative">
             {/* Left: Sidebar Content */}
-            <div className={cn("w-64 border-r border-[#2A3149] bg-[#1C2028]/40 transition-all overflow-hidden", sidebarTab === 'debug' ? 'w-80' : 'w-64')}>
+            <div className={cn("border-r border-[#2A3149] bg-[#1C2028]/40 transition-all overflow-hidden", sidebarTab === 'debug' ? 'w-80' : 'w-64')}>
               {sidebarTab === 'explorer' && (
                 <div className="p-4 space-y-4">
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#4A5178]">Explorer</span>
@@ -318,9 +356,9 @@ export default function CatalystCanvas() {
           {/* Bottom: AI Output */}
           <AIOutputDisplay 
             output={aiOutput} 
-            originalContent={selection || activeFile.content}
+            originalContent={generationContext?.text || activeFile.content}
             onAccept={applyAIChange} 
-            onReject={() => { setAiOutput(''); setPipelineStep(-1); }}
+            onReject={() => { setAiOutput(''); setPipelineStep(-1); setGenerationContext(null); }}
             onRefine={() => handleGenerate(`Improve this result: ${aiOutput.substring(0, 50)}...`)}
             isLoading={isLoading}
             step={pipelineStep}

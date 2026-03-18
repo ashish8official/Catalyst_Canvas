@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Check, 
@@ -36,6 +36,24 @@ export function AIOutputDisplay({
   step 
 }: AIOutputDisplayProps) {
   const [height, setHeight] = useState(400);
+
+  // Keyboard Shortcuts: Cmd+Enter (Accept), Esc (Reject)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (output || isLoading) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          onAccept();
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onReject();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onAccept, onReject, output, isLoading]);
 
   if (step === -1 && !output && !isLoading) return null;
 
