@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { EditorSurface } from "@/components/editor/EditorSurface";
 import { PromptConsole } from "@/components/ai/PromptConsole";
 import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
@@ -38,7 +38,10 @@ import {
   CheckCircle2,
   Zap,
   Globe,
-  Bell
+  Bell,
+  Type,
+  FileJson,
+  Hash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -114,7 +117,16 @@ export default function CatalystCanvas() {
   const [newFileName, setNewFileName] = useState("");
 
   // Active File Derived State
-  const activeFile = files.find(f => f.id === activeFileId) || files[0];
+  const activeFile = useMemo(() => files.find(f => f.id === activeFileId) || files[0], [files, activeFileId]);
+
+  // Document Stats
+  const stats = useMemo(() => {
+    const text = activeFile.content || "";
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+    const lines = text.split('\n').length;
+    return { words, chars, lines };
+  }, [activeFile.content]);
 
   const updateActiveFileContent = (newContent: string) => {
     setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: newContent } : f));
@@ -122,9 +134,9 @@ export default function CatalystCanvas() {
 
   const getDetailsFromFileName = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase() || '';
-    if (ext === 'plsql') return { language: 'PL/SQL', mode: 'code' as const };
+    if (ext === 'plsql' || ext === 'sql') return { language: 'SQL', mode: 'code' as const };
     if (ext === 'py') return { language: 'Python', mode: 'code' as const };
-    if (ext === 'sql') return { language: 'SQL', mode: 'code' as const };
+    if (ext === 'json') return { language: 'JSON', mode: 'code' as const };
     return { language: 'Plain Text', mode: 'text' as const };
   };
 
@@ -488,35 +500,38 @@ export default function CatalystCanvas() {
               </div>
             </div>
 
-            <div className="flex items-center gap-6">
-              {/* AI Status Dashboard */}
-              <div className="hidden md:flex items-center gap-4 px-4 py-1.5 bg-secondary/20 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+            {/* Useful Editor Utilities */}
+            <div className="flex items-center gap-8">
+              <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 bg-secondary/20 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2 pr-6 border-r border-white/10">
+                  <Type className="w-3.5 h-3.5 text-primary/60" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Words</span>
+                    <span className="text-[11px] font-mono font-bold">{stats.words}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pr-6 border-r border-white/10">
+                  <Hash className="w-3.5 h-3.5 text-primary/60" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Chars</span>
+                    <span className="text-[11px] font-mono font-bold">{stats.chars}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pr-6 border-r border-white/10">
+                  <Activity className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Lines</span>
+                    <span className="text-[11px] font-mono font-bold">{stats.lines}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">Gemini 2.5</span>
-                  <Badge variant="outline" className="h-4 text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-1">ACTIVE</Badge>
-                </div>
-                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-                  <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">98% Sync</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">Edge</span>
+                  <Badge variant="outline" className="h-5 text-[8px] bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 uppercase font-bold tracking-widest">Gemini 2.5</Badge>
                 </div>
               </div>
 
-              {/* Advanced Header Actions */}
+              {/* Action Utilities */}
               <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
-                      <Bell className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Notifications</TooltipContent>
-                </Tooltip>
-
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
@@ -542,11 +557,11 @@ export default function CatalystCanvas() {
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-xs gap-2 py-2.5">
                       <FileText className="w-4 h-4 text-emerald-400" />
-                      Source Files Only
+                      Plain Text (.txt)
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-xs gap-2 py-2.5">
-                      <Terminal className="w-4 h-4 text-amber-400" />
-                      Deployment Config
+                      <FileJson className="w-4 h-4 text-amber-400" />
+                      JSON Structure
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -555,12 +570,15 @@ export default function CatalystCanvas() {
                 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button className="h-9 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-4 rounded-xl shadow-lg shadow-primary/20">
-                      <Zap className="w-4 h-4" />
-                      Connect
+                    <Button 
+                      onClick={() => toast({ title: "Saved", description: `${activeFile.name} changes committed.` })}
+                      className="h-9 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-4 rounded-xl shadow-lg shadow-primary/20"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Deploy Cloud Instances</TooltipContent>
+                  <TooltipContent>Commit Changes</TooltipContent>
                 </Tooltip>
               </div>
             </div>
