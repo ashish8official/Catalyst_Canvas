@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface FileEntry {
   id: string;
@@ -93,7 +94,6 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    // Simple logic to rotate through common extensions for demonstration
     const extensions = ['.sql', '.plsql', '.txt'];
     const nextExt = extensions[files.length % extensions.length];
     const name = `new-file-${files.length + 1}${nextExt}`;
@@ -127,25 +127,25 @@ export default function CatalystCanvas() {
   const simulatePipeline = async (action: () => Promise<string>) => {
     setIsLoading(true);
     setAiOutput("");
-    setPipelineStep(0); // Context inject
+    setPipelineStep(0); 
     
     await new Promise(r => setTimeout(r, 600));
-    setPipelineStep(1); // Template expand
+    setPipelineStep(1); 
     
     await new Promise(r => setTimeout(r, 800));
-    setPipelineStep(2); // LLM call
+    setPipelineStep(2); 
     
     try {
       const result = await action();
       
-      setPipelineStep(3); // Normalize
+      setPipelineStep(3); 
       await new Promise(r => setTimeout(r, 400));
       
-      setPipelineStep(4); // Diff gen
+      setPipelineStep(4); 
       await new Promise(r => setTimeout(r, 400));
       
       setAiOutput(result);
-      setPipelineStep(5); // Complete
+      setPipelineStep(5); 
     } catch (error) {
       toast({ variant: "destructive", title: "AI Error", description: "Generation failed." });
       setPipelineStep(-1);
