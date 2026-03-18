@@ -24,11 +24,14 @@ import {
   Layers,
   Bug,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Terminal,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 
 interface FileEntry {
   id: string;
@@ -42,14 +45,14 @@ const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
     name: "query.sql",
-    content: "select id, name, created_at from users where status = 'active' order by created_at desc;",
+    content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;",
     language: "SQL",
     mode: "code"
   },
   {
     id: "2",
     name: "process.plsql",
-    content: "create or replace procedure update_user_status (p_user_id in number, p_status in varchar2) as begin update users set status = p_status where id = p_user_id; commit; end;",
+    content: "CREATE OR REPLACE PROCEDURE update_user_status (p_user_id IN NUMBER, p_status IN VARCHAR2) AS BEGIN UPDATE users SET status = p_status WHERE id = p_user_id; COMMIT; END;",
     language: "PL/SQL",
     mode: "code"
   },
@@ -62,6 +65,8 @@ const INITIAL_FILES: FileEntry[] = [
   }
 ];
 
+type SidebarTab = "explorer" | "debug" | "search" | "settings";
+
 export default function CatalystCanvas() {
   const { toast } = useToast();
   
@@ -70,13 +75,14 @@ export default function CatalystCanvas() {
   const [activeFileId, setActiveFileId] = useState<string>("1");
   
   // UI State
-  const [sidebarTab, setSidebarTab] = useState<"explorer" | "debug">("explorer");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("explorer");
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
   const [selection, setSelection] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [aiOutput, setAiOutput] = useState("");
   const [pipelineStep, setPipelineStep] = useState<number>(-1);
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Active File Derived State
   const activeFile = files.find(f => f.id === activeFileId) || files[0];
@@ -87,7 +93,11 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    const name = `new-file-${files.length + 1}.sql`;
+    // Simple logic to rotate through common extensions for demonstration
+    const extensions = ['.sql', '.plsql', '.txt'];
+    const nextExt = extensions[files.length % extensions.length];
+    const name = `new-file-${files.length + 1}${nextExt}`;
+    
     const ext = `.${name.split('.').pop()}`;
     const language = ext === '.plsql' ? 'PL/SQL' : ext === '.txt' ? 'Plain Text' : 'SQL';
     const mode: "text" | "code" = ext === '.txt' ? 'text' : 'code';
@@ -101,8 +111,9 @@ export default function CatalystCanvas() {
     };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newId);
+    setSidebarTab("explorer");
     setIsExplorerOpen(true);
-    toast({ title: "File Created", description: `Created ${newFile.name}` });
+    toast({ title: "File Created", description: `Created ${newFile.name} (${language})` });
   };
 
   const handleDeleteFile = (e: React.MouseEvent, id: string) => {
@@ -179,34 +190,14 @@ export default function CatalystCanvas() {
     setPipelineStep(-1);
   };
 
-  // Auto-detect language when active file changes
-useEffect(() => {
-  const file = files.find(f => f.id === activeFileId);
-  if (!file) return;
-
-  const name = file.name.toLowerCase();
-  let detectedLanguage = file.language;
-  let detectedMode: "text" | "code" = file.mode;
-
-  if (name.endsWith('.sql')) {
-    detectedLanguage = 'SQL'; detectedMode = 'code';
-  } else if (name.endsWith('.plsql') || name.endsWith('.pls') || name.endsWith('.pks')) {
-    detectedLanguage = 'PL/SQL'; detectedMode = 'code';
-  } else if (name.endsWith('.txt') || name.endsWith('.md')) {
-    detectedLanguage = 'Plain Text'; detectedMode = 'text';
-  } else if (name.endsWith('.js') || name.endsWith('.ts')) {
-    detectedLanguage = 'JavaScript'; detectedMode = 'code';
-  }
-
-  // Only update if changed to avoid re-render loop
-  if (detectedLanguage !== file.language || detectedMode !== file.mode) {
-    setFiles(prev => prev.map(f =>
-      f.id === activeFileId
-        ? { ...f, language: detectedLanguage, mode: detectedMode }
-        : f
-    ));
-  }
-}, [activeFileId, files.find(f => f.id === activeFileId)?.name]);
+  const toggleTab = (tab: SidebarTab) => {
+    if (sidebarTab === tab) {
+      setIsExplorerOpen(!isExplorerOpen);
+    } else {
+      setSidebarTab(tab);
+      setIsExplorerOpen(true);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -221,11 +212,8 @@ useEffect(() => {
               <TooltipTrigger asChild>
                 <Button 
                   variant="ghost" size="icon" 
-                  className={cn("h-10 w-10 transition-colors", sidebarTab === "explorer" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                  onClick={() => {
-                    if (sidebarTab === "explorer") setIsExplorerOpen(!isExplorerOpen);
-                    setSidebarTab("explorer");
-                  }}
+                  className={cn("h-10 w-10 transition-colors", sidebarTab === "explorer" && isExplorerOpen ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                  onClick={() => toggleTab("explorer")}
                 >
                   <FolderOpen className="w-5 h-5" />
                 </Button>
@@ -237,11 +225,8 @@ useEffect(() => {
               <TooltipTrigger asChild>
                 <Button 
                   variant="ghost" size="icon" 
-                  className={cn("h-10 w-10 transition-colors", sidebarTab === "debug" ? "text-destructive bg-destructive/10" : "text-muted-foreground")}
-                  onClick={() => {
-                    if (sidebarTab === "debug") setIsExplorerOpen(!isExplorerOpen);
-                    setSidebarTab("debug");
-                  }}
+                  className={cn("h-10 w-10 transition-colors", sidebarTab === "debug" && isExplorerOpen ? "text-destructive bg-destructive/10" : "text-muted-foreground")}
+                  onClick={() => toggleTab("debug")}
                 >
                   <Bug className="w-5 h-5" />
                 </Button>
@@ -251,16 +236,24 @@ useEffect(() => {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
+                <Button 
+                  variant="ghost" size="icon" 
+                  className={cn("h-10 w-10 transition-colors", sidebarTab === "search" && isExplorerOpen ? "text-blue-400 bg-blue-400/10" : "text-muted-foreground")}
+                  onClick={() => toggleTab("search")}
+                >
                   <Search className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Search</TooltipContent>
+              <TooltipContent side="right">Global Search</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
+                <Button 
+                  variant="ghost" size="icon" 
+                  className={cn("h-10 w-10 transition-colors", sidebarTab === "settings" && isExplorerOpen ? "text-amber-400 bg-amber-400/10" : "text-muted-foreground")}
+                  onClick={() => toggleTab("settings")}
+                >
                   <Settings className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
@@ -268,27 +261,32 @@ useEffect(() => {
             </Tooltip>
           </div>
           <div className="flex flex-col gap-4">
-            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
-              <HelpCircle className="w-5 h-5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground">
+                  <HelpCircle className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Documentation</TooltipContent>
+            </Tooltip>
             <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center cursor-pointer hover:bg-secondary/80 transition-colors">
               <UserCircle className="w-6 h-6 text-muted-foreground" />
             </div>
           </div>
         </div>
 
-        {/* Explorer/Debug Sidebar Panel (Collapsible) */}
+        {/* Dynamic Sidebar Panel (Collapsible) */}
         <div 
           className={cn(
             "border-r bg-card/40 flex flex-col explorer-transition overflow-hidden",
             isExplorerOpen ? "w-80 opacity-100" : "w-0 opacity-0 border-none"
           )}
         >
-          {sidebarTab === "explorer" ? (
+          {sidebarTab === "explorer" && (
             <>
               <div className="p-4 flex items-center justify-between border-b bg-secondary/20 min-w-[320px]">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project Explorer</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCreateFile}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10" onClick={handleCreateFile}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -316,13 +314,74 @@ useEffect(() => {
                 ))}
               </div>
             </>
-          ) : (
+          )}
+
+          {sidebarTab === "debug" && (
             <div className="min-w-[320px] h-full">
               <DebugPanel 
                 content={activeFile.content}
                 language={activeFile.language}
                 onFixAll={() => handleGenerate("Refactor and fix all issues identified in the diagnostic report.")} 
               />
+            </div>
+          )}
+
+          {sidebarTab === "search" && (
+            <div className="min-w-[320px] h-full flex flex-col">
+              <div className="p-4 border-b bg-secondary/20">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Global Search</span>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input 
+                    placeholder="Search project files..." 
+                    className="pl-10 bg-secondary/30 border-white/5 focus-visible:ring-primary/40"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-4 pt-4">
+                  <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Search Results</p>
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
+                    <Search className="w-10 h-10" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">No results found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {sidebarTab === "settings" && (
+            <div className="min-w-[320px] h-full flex flex-col">
+              <div className="p-4 border-b bg-secondary/20">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Environment Settings</span>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Engine</label>
+                  <div className="p-3 rounded-xl bg-secondary/30 border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">Gemini 2.5 Flash</span>
+                      <Badge variant="secondary" className="text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20">ACTIVE</Badge>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Optimized for rapid generation and diagnostic accuracy.</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Editor Preferences</label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 hover:bg-secondary/20 rounded-lg cursor-pointer transition-colors">
+                      <span className="text-xs">Line Numbers</span>
+                      <div className="w-8 h-4 bg-primary rounded-full relative"><div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full" /></div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 hover:bg-secondary/20 rounded-lg cursor-pointer transition-colors">
+                      <span className="text-xs">Word Wrap</span>
+                      <div className="w-8 h-4 bg-secondary rounded-full relative"><div className="absolute left-1 top-1 w-2 h-2 bg-white/40 rounded-full" /></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
