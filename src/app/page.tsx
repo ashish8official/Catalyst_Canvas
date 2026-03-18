@@ -35,7 +35,8 @@ import {
   FileCode,
   FileText,
   FileJson,
-  Palette
+  Palette,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -483,6 +484,10 @@ export default function CatalystCanvas() {
                 <div className="flex items-center gap-2 pr-4 border-r border-white/10">
                   <Hash className="w-3.5 h-3.5 text-[#B478EA]/60" />
                   <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Chars</span><span className="text-[11px] font-mono font-bold">{stats.chars}</span></div>
+                </div>
+                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+                  <List className="w-3.5 h-3.5 text-[#B478EA]/60" />
+                  <div className="flex flex-col"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">Lines</span><span className="text-[11px] font-mono font-bold">{stats.lines}</span></div>
                 </div>
                 <div className="flex items-center gap-3"><Zap className="w-3.5 h-3.5 text-amber-400" /><Badge variant="outline" className="h-5 text-[8px] bg-amber-500/10 text-amber-500 border-amber-500/20 px-1.5 uppercase font-bold tracking-widest">Gemini 2.5</Badge></div>
               </div>
