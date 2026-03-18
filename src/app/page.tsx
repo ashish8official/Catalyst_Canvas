@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { EditorSurface } from "@/components/editor/EditorSurface";
 import { PromptConsole } from "@/components/ai/PromptConsole";
 import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
@@ -67,6 +68,12 @@ interface FileEntry {
   mode: "text" | "code";
 }
 
+interface DocStats {
+  words: number;
+  chars: number;
+  lines: number;
+}
+
 const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
@@ -103,6 +110,7 @@ export default function CatalystCanvas() {
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [wordWrap, setWordWrap] = useState(true);
+  const [stats, setStats] = useState<DocStats>({ words: 0, chars: 0, lines: 0 });
 
   // Dialog State
   const [isSaveAsOpen, setIsSaveAsOpen] = useState(false);
@@ -132,15 +140,6 @@ export default function CatalystCanvas() {
 
     return { language: 'Plain Text', mode: 'text' as const };
   };
-
-  // Document Stats
-  const stats = useMemo(() => {
-    const text = activeFile.content || "";
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    const chars = text.length;
-    const lines = text.split('\n').length;
-    return { words, chars, lines };
-  }, [activeFile.content]);
 
   const updateActiveFileContent = (newContent: string) => {
     setFiles(prev => prev.map(f => {
@@ -207,15 +206,12 @@ export default function CatalystCanvas() {
     setIsLoading(true);
     setAiOutput("");
     
-    // Step-by-step pipeline animation
     for (let i = 0; i < 5; i++) {
       setPipelineStep(i);
       await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
-      // Trigger the actual action during the LLM Processing step (2)
       if (i === 2) {
         try {
           const result = await action();
-          // Simulate simple diff for visualization
           const diffResult = result.split('\n').map(l => `+ ${l}`).join('\n');
           setAiOutput(diffResult);
         } catch (error) {
@@ -251,7 +247,7 @@ export default function CatalystCanvas() {
     });
   };
 
-  const handleAIAction = (action: 'explain' | 'fix' | 'format') => {
+  const handleAIAction = (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => {
     if (action === 'format') {
       simulatePipeline(async () => {
         const targetContent = selection || activeFile.content;
@@ -260,9 +256,16 @@ export default function CatalystCanvas() {
       });
     } else {
       simulatePipeline(async () => {
+        const promptMap = {
+          explain: 'explain',
+          fix: 'fix_or_improve',
+          optimize: 'fix_or_improve',
+          summarize: 'explain'
+        } as const;
+        
         const res = await explainOrFixSelectedCode({
           codeSnippet: selection || activeFile.content,
-          action: action === 'explain' ? 'explain' : 'fix_or_improve',
+          action: promptMap[action as keyof typeof promptMap] || 'explain',
           language: activeFile.language
         });
         return res.explanationOrFix;
@@ -271,7 +274,6 @@ export default function CatalystCanvas() {
   };
 
   const applyAIChange = () => {
-    // Strip the simulated diff markers
     const cleanOutput = aiOutput.split('\n').map(l => l.startsWith('+ ') ? l.substring(2) : l).join('\n');
     
     if (selection) {
@@ -462,11 +464,13 @@ export default function CatalystCanvas() {
                 content={activeFile.content}
                 onChange={updateActiveFileContent}
                 onSelectionChange={setSelection}
+                onStatsChange={setStats}
                 mode={activeFile.mode}
                 language={activeFile.language}
                 wordWrap={wordWrap}
                 onRefine={(p) => p ? handleGenerate(p) : handleAIAction('format')}
                 onFormat={() => handleAIAction('format')}
+                onAIAction={handleAIAction}
                 onSave={() => toast({ title: "Saved", description: `${activeFile.name} saved.` })}
                 onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.').pop()}`); setIsSaveAsOpen(true); }}
                 onRename={(newName) => handleRename(activeFile.id, newName)}

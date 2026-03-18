@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { 
@@ -32,16 +32,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
+interface DocStats {
+  words: number;
+  chars: number;
+  lines: number;
+}
+
 interface EditorSurfaceProps {
   fileName: string;
   content: string;
   onChange: (content: string) => void;
   onSelectionChange: (selection: string) => void;
+  onStatsChange?: (stats: DocStats) => void;
   mode: "text" | "code";
   language: string;
   wordWrap: boolean;
   onRefine: (prompt?: string) => void;
   onFormat: () => void;
+  onAIAction: (action: 'explain' | 'fix' | 'format' | 'optimize' | 'summarize') => void;
   onSave: () => void;
   onSaveAs: () => void;
   onRename: (newName: string) => void;
@@ -54,11 +62,13 @@ export function EditorSurface({
   content,
   onChange,
   onSelectionChange,
+  onStatsChange,
   mode,
   language,
   wordWrap,
   onRefine,
   onFormat,
+  onAIAction,
   onSave,
   onSaveAs,
   onRename,
@@ -67,16 +77,24 @@ export function EditorSurface({
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [lineCount, setLineCount] = useState(1);
   const [showSelectionBar, setShowSelectionBar] = useState(false);
   const [barPosition, setBarPosition] = useState({ top: 0, left: 0 });
   
   const [isRenaming, setIsRenaming] = useState(false);
   const [editName, setEditName] = useState(fileName);
 
-  useEffect(() => {
-    setLineCount(content.split("\n").length);
+  // Compute stats and bubble up
+  const stats = useMemo(() => {
+    const text = content || "";
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+    const lines = text.split("\n").length;
+    return { words, chars, lines };
   }, [content]);
+
+  useEffect(() => {
+    onStatsChange?.(stats);
+  }, [stats, onStatsChange]);
 
   useEffect(() => {
     if (isRenaming && inputRef.current) {
@@ -101,9 +119,11 @@ export function EditorSurface({
       onSelectionChange(selected);
 
       if (selected.trim().length > 0) {
+        // Find selection coordinates for floating action bar
+        // We use a simplified positioning for standard textarea
         const { clientX, clientY } = (e as React.MouseEvent);
         if (clientX && clientY) {
-          setBarPosition({ top: clientY - 60, left: clientX });
+          setBarPosition({ top: clientY - 50, left: clientX });
           setShowSelectionBar(true);
         }
       } else {
@@ -128,15 +148,15 @@ export function EditorSurface({
   };
 
   const getFileIcon = () => {
-    if (language === "SQL" || language === "PL/SQL") return <Database className="w-3.5 h-3.5 text-blue-400" />;
+    if (language === "SQL" || language === "PL/SQL") return <Database className="w-3.5 h-3.5 text-[#4775D1]" />;
     if (language === "Python") return <Terminal className="w-3.5 h-3.5 text-emerald-400" />;
     if (language === "JSON") return <FileJson className="w-3.5 h-3.5 text-amber-400" />;
-    if (language === "Markdown") return <Hash className="w-3.5 h-3.5 text-purple-400" />;
+    if (language === "Markdown") return <Hash className="w-3.5 h-3.5 text-[#B478EA]" />;
     return <FileText className="w-3.5 h-3.5 text-primary" />;
   };
 
   return (
-    <div className="flex flex-col h-full bg-card/30 border border-white/5 rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:border-primary/20">
+    <div className="flex flex-col h-full bg-[#15181D]/40 border border-white/5 rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:border-[#B478EA]/20">
       {/* Editor Toolbar */}
       <div className="flex items-center justify-between px-5 py-3 bg-secondary/20 border-b border-white/5">
         <div className="flex items-center gap-3">
@@ -148,7 +168,7 @@ export function EditorSurface({
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={handleRenameSubmit}
                 onKeyDown={handleRenameKeyDown}
-                className="h-7 w-48 bg-background border-primary/40 text-xs py-0 px-2"
+                className="h-7 w-48 bg-background border-[#B478EA]/40 text-xs py-0 px-2"
               />
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-500" onClick={handleRenameSubmit}><Check className="w-3 h-3" /></Button>
@@ -157,7 +177,7 @@ export function EditorSurface({
             </div>
           ) : (
             <div 
-              className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-primary/40 transition-colors group"
+              className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-[#B478EA]/40 transition-colors group"
               onClick={() => setIsRenaming(true)}
             >
               {getFileIcon()}
@@ -207,7 +227,7 @@ export function EditorSurface({
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-card border-primary/20">
+            <DropdownMenuContent align="end" className="w-56 bg-card border-[#B478EA]/20">
               <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Actions</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/5" />
               <DropdownMenuItem onClick={onSaveAs} className="gap-2 text-xs py-2 cursor-pointer">
@@ -228,40 +248,46 @@ export function EditorSurface({
       <div className="relative flex-1 bg-background/40 flex overflow-hidden">
         {/* Line Numbers Gutter */}
         <div className="w-12 bg-secondary/10 border-r border-white/5 py-8 text-right pr-3 select-none flex flex-col font-code text-[11px] text-muted-foreground/30 leading-relaxed">
-          {Array.from({ length: Math.max(lineCount, 1) }).map((_, i) => (
+          {Array.from({ length: Math.max(stats.lines, 1) }).map((_, i) => (
             <div key={i}>{i + 1}</div>
           ))}
         </div>
 
-        <div className="flex-1 relative group">
+        <div className="flex-1 relative group overflow-auto">
           <textarea
             ref={textareaRef}
             value={content}
             onChange={handleTextChange}
             onMouseUp={handleSelection}
             onKeyUp={handleSelection}
-            placeholder={mode === "code" ? "-- Write your code here..." : "Write your notes here..."}
+            placeholder={mode === "code" ? "-- Start coding..." : "Start writing..."}
             className={cn(
-              "w-full h-full p-8 bg-transparent resize-none focus:outline-none focus:ring-0 leading-relaxed caret-primary transition-all scrollbar-hide",
-              mode === "code" ? "font-code text-[13px]" : "font-body text-[15px]",
-              wordWrap ? "whitespace-pre-wrap" : "whitespace-pre"
+              "w-full h-full p-8 bg-transparent resize-none focus:outline-none focus:ring-0 leading-relaxed caret-primary transition-all font-code text-[13px]",
+              wordWrap ? "whitespace-pre-wrap" : "whitespace-pre",
+              language === "SQL" || language === "PL/SQL" ? "text-[#4775D1]" : "text-foreground"
             )}
             spellCheck={false}
           />
           
-          <div className="absolute bottom-6 right-8 flex items-center gap-4 text-[9px] text-muted-foreground/40 font-bold tracking-widest uppercase pointer-events-none group-hover:text-primary/40 transition-colors">
+          <div className="absolute bottom-6 right-8 flex items-center gap-4 text-[9px] text-muted-foreground/40 font-bold tracking-widest uppercase pointer-events-none group-hover:text-[#B478EA]/40 transition-colors">
             <span>{language}</span>
             <span className="h-3 w-px bg-white/10" />
-            <span>Col: {content.length}</span>
+            <span>Ln {stats.lines}, Col {content.length}</span>
           </div>
         </div>
       </div>
 
-      {/* Selection Action Bar */}
+      {/* Selection Action Bar - Floating above selection */}
       {showSelectionBar && (
         <SelectionActionBar 
           position={barPosition} 
-          onAction={(type) => onRefine(type)}
+          onAction={(type) => {
+            if (['explain', 'fix', 'optimize', 'summarize'].includes(type)) {
+              onAIAction(type as any);
+            } else {
+              onRefine(type);
+            }
+          }}
           onClose={() => setShowSelectionBar(false)}
         />
       )}
