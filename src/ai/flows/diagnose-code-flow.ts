@@ -5,7 +5,7 @@ import { z } from 'genkit';
 
 const DiagnoseCodeInputSchema = z.object({
   content: z.string().describe('The code to diagnose.'),
-  language: z.string().describe('Language: SQL, PL/SQL, Python, or Plain Text.'),
+  language: z.string().describe('Language context: SQL, PL/SQL, Python, etc.'),
 });
 export type DiagnoseCodeInput = z.infer<typeof DiagnoseCodeInputSchema>;
 
@@ -32,20 +32,28 @@ const prompt = ai.definePrompt({
   name: 'diagnoseCodePrompt',
   input: { schema: DiagnoseCodeInputSchema },
   output: { schema: DiagnoseCodeOutputSchema },
-  prompt: `You are a senior database engineer and systems architect specializing in {{language}}.
+  prompt: `You are a senior database engineer and systems architect.
 
-Analyze the following code and identify issues. For each issue provide:
-- severity: 'error' (breaks execution), 'warning' (bad practice/performance risk), or 'info' (style/suggestion)
-- line: approximate line number if identifiable (optional)
-- message: short description of the problem
-- suggestion: concrete, actionable fix
+Analyze the following code and identify technical issues. 
 
-Focus on:
-- SQL/PL/SQL: missing aliases, full table scans, missing exception handling, implicit commits, unindexed WHERE columns, missing NULL checks.
-- Python: PEP 8 violations, inefficient loops, mutable default arguments, missing error handling, type hint suggestions.
-- Text: clarity, structure, completeness.
+For SQL and PL/SQL specifically, look for:
+- Missing column aliases in complex joins.
+- Potential full table scans (missing WHERE clauses on large tables).
+- Implicit commits or lack of transaction control.
+- Missing exception handling blocks in PL/SQL.
+- Inefficient subqueries that could be JOINs.
+- SQL injection vulnerabilities.
 
-Return a summary of the overall code health in one sentence.
+For other languages:
+- Logic errors, performance bottlenecks, and security risks.
+
+Return a list of issues with:
+- severity: 'error' (breaks execution), 'warning' (bad practice/risk), or 'info' (style/suggestion).
+- line: approximate line number.
+- message: clear description.
+- suggestion: how to fix it.
+
+Also provide a one-sentence "summary" of the overall code health.
 
 Code ({{language}}):
 \`\`\`
