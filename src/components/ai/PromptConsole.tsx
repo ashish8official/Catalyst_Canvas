@@ -48,7 +48,7 @@ export function PromptConsole({ onGenerate, isLoading, history }: PromptConsoleP
           <div className="p-2 rounded-xl bg-primary/15 border border-primary/20 shadow-[0_0_15px_rgba(111,86,229,0.15)]">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <h2 className="font-headline font-bold text-sm tracking-widest uppercase">AI Assistant</h2>
+          <h2 className="font-headline font-bold text-sm tracking-widest uppercase text-foreground">AI Assistant</h2>
         </div>
         <Badge variant="outline" className="text-[9px] font-mono border-primary/20 text-primary uppercase">Catalyst v4.2</Badge>
       </div>
