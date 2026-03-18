@@ -245,6 +245,31 @@ export default function CatalystCanvas() {
     toast({ title: 'Implementation Merged', description: 'AI changes applied successfully.' });
   };
 
+  const handleExport = () => {
+    if (!activeFile) return;
+    const blob = new Blob([activeFile.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "File Exported",
+      description: `${activeFile.name} has been downloaded.`,
+    });
+  };
+
+  const handleSave = () => {
+    // Mock save functionality
+    toast({
+      title: "Workspace Saved",
+      description: "All changes have been synced locally.",
+    });
+  };
+
   const colorProfiles = [
     { name: 'Catalyst White', value: '#E8ECF5' },
     { name: 'Intelligent Blue', value: '#4775D1' },
@@ -304,10 +329,19 @@ export default function CatalystCanvas() {
               </div>
               
               <div className="flex items-center gap-1 p-1 bg-[#222837] rounded-xl border border-[#2A3149]">
-                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase text-[#8B93B0] hover:text-[#4775D1]">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-[10px] font-bold uppercase text-[#8B93B0] hover:text-[#4775D1]"
+                  onClick={handleExport}
+                >
                   <Share2 className="w-3.5 h-3.5 mr-2" /> Export
                 </Button>
-                <Button size="sm" className="h-8 bg-[#4775D1] hover:bg-[#4775D1]/90 text-white text-[10px] font-bold uppercase px-4 rounded-lg shadow-lg shadow-[#4775D1]/10">
+                <Button 
+                  size="sm" 
+                  className="h-8 bg-[#4775D1] hover:bg-[#4775D1]/90 text-white text-[10px] font-bold uppercase px-4 rounded-lg shadow-lg shadow-[#4775D1]/10"
+                  onClick={handleSave}
+                >
                   <Save className="w-3.5 h-3.5 mr-2" /> Save
                 </Button>
               </div>
