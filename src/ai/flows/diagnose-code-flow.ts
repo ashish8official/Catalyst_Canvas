@@ -5,7 +5,7 @@ import { z } from 'genkit';
 
 const DiagnoseCodeInputSchema = z.object({
   content: z.string().describe('The code to diagnose.'),
-  language: z.string().describe('Language: SQL, PL/SQL, or Plain Text.'),
+  language: z.string().describe('Language: SQL, PL/SQL, Python, or Plain Text.'),
 });
 export type DiagnoseCodeInput = z.infer<typeof DiagnoseCodeInputSchema>;
 
@@ -32,7 +32,7 @@ const prompt = ai.definePrompt({
   name: 'diagnoseCodePrompt',
   input: { schema: DiagnoseCodeInputSchema },
   output: { schema: DiagnoseCodeOutputSchema },
-  prompt: `You are a senior database engineer and code reviewer specializing in {{language}}.
+  prompt: `You are a senior database engineer and systems architect specializing in {{language}}.
 
 Analyze the following code and identify issues. For each issue provide:
 - severity: 'error' (breaks execution), 'warning' (bad practice/performance risk), or 'info' (style/suggestion)
@@ -41,8 +41,9 @@ Analyze the following code and identify issues. For each issue provide:
 - suggestion: concrete, actionable fix
 
 Focus on:
-- SQL/PL/SQL: missing aliases, full table scans, missing exception handling, implicit commits, unindexed WHERE columns, missing NULL checks
-- Text: clarity, structure, completeness
+- SQL/PL/SQL: missing aliases, full table scans, missing exception handling, implicit commits, unindexed WHERE columns, missing NULL checks.
+- Python: PEP 8 violations, inefficient loops, mutable default arguments, missing error handling, type hint suggestions.
+- Text: clarity, structure, completeness.
 
 Return a summary of the overall code health in one sentence.
 

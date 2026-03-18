@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
@@ -18,7 +17,8 @@ import {
   Code,
   Check,
   X,
-  Plus
+  Plus,
+  Terminal
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -125,6 +125,12 @@ export function EditorSurface({
     }
   };
 
+  const getFileIcon = () => {
+    if (language === "SQL" || language === "PL/SQL") return <Database className="w-3.5 h-3.5 text-blue-400" />;
+    if (language === "Python") return <Terminal className="w-3.5 h-3.5 text-emerald-400" />;
+    return <FileText className="w-3.5 h-3.5 text-primary" />;
+  };
+
   return (
     <div className="flex flex-col h-full bg-card/30 border border-white/5 rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:border-primary/20">
       {/* Editor Toolbar */}
@@ -150,7 +156,7 @@ export function EditorSurface({
               className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-primary/40 transition-colors group"
               onClick={() => setIsRenaming(true)}
             >
-              {language === "SQL" || language === "PL/SQL" ? <Database className="w-3.5 h-3.5 text-blue-400" /> : <FileText className="w-3.5 h-3.5 text-primary" />}
+              {getFileIcon()}
               <span className="text-xs font-bold tracking-wide text-foreground/90">{fileName}</span>
               <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
             </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -61,15 +60,15 @@ const INITIAL_FILES: FileEntry[] = [
   {
     id: "1",
     name: "query.sql",
-    content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;",
+    content: "SELECT id, name, created_at FROM users WHERE status = 'active' ORDER BY created_at DESC;\nSELECT * FROM logs WHERE level = 'ERROR';",
     language: "SQL",
     mode: "code"
   },
   {
     id: "2",
-    name: "process.plsql",
-    content: "CREATE OR REPLACE PROCEDURE update_user_status (p_user_id IN NUMBER, p_status IN VARCHAR2) AS BEGIN UPDATE users SET status = p_status WHERE id = p_user_id; COMMIT; END;",
-    language: "PL/SQL",
+    name: "main.py",
+    content: "def greet(name):\n  print(f'Hello, {name}!')\n\nif __name__ == '__main__':\n  greet('World')",
+    language: "Python",
     mode: "code"
   },
   {
@@ -113,9 +112,10 @@ export default function CatalystCanvas() {
 
   const getDetailsFromFileName = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase() || '';
-    const language = ext === 'plsql' ? 'PL/SQL' : ext === 'sql' ? 'SQL' : 'Plain Text';
-    const mode: "text" | "code" = (ext === 'sql' || ext === 'plsql') ? 'code' : 'text';
-    return { language, mode };
+    if (ext === 'plsql') return { language: 'PL/SQL', mode: 'code' as const };
+    if (ext === 'py') return { language: 'Python', mode: 'code' as const };
+    if (ext === 'sql') return { language: 'SQL', mode: 'code' as const };
+    return { language: 'Plain Text', mode: 'text' as const };
   };
 
   const handleCreateFile = () => {
@@ -134,7 +134,7 @@ export default function CatalystCanvas() {
     setActiveFileId(newId);
     setSidebarTab("explorer");
     setIsExplorerOpen(true);
-    toast({ title: "File Created", description: `Created ${newFile.name} (Plain Text)` });
+    toast({ title: "File Created", description: `Created ${newFile.name} (${language})` });
   };
 
   const handleDeleteFile = (id: string) => {
