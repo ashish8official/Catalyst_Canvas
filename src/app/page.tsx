@@ -47,6 +47,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FileEntry {
   id: string;
@@ -239,6 +240,12 @@ export default function CatalystCanvas() {
     }
   };
 
+  // Search Results Filtering
+  const filteredSearchFiles = files.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    f.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -370,16 +377,54 @@ export default function CatalystCanvas() {
               <div className="p-4 border-b bg-secondary/20">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Global Search</span>
               </div>
-              <div className="p-4 space-y-4">
-                <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <div className="p-4 flex-1 flex flex-col gap-4 overflow-hidden">
+                <div className="relative group px-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search project..." 
-                    className="pl-10 bg-secondary/30 border-white/5"
+                    placeholder="Search name or content..." 
+                    className="pl-10 bg-secondary/30 border-white/5 h-11 rounded-xl"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
                   />
                 </div>
+                
+                <ScrollArea className="flex-1 px-1">
+                  <div className="space-y-2 pr-4 pb-4">
+                    {searchQuery.trim() !== "" ? (
+                      filteredSearchFiles.length > 0 ? (
+                        filteredSearchFiles.map(file => (
+                          <div
+                            key={file.id}
+                            className={cn(
+                              "p-3 rounded-xl border transition-all cursor-pointer group",
+                              activeFileId === file.id ? "bg-primary/10 border-primary/30" : "bg-secondary/20 border-white/5 hover:border-primary/20 hover:bg-secondary/40"
+                            )}
+                            onClick={() => setActiveFileId(file.id)}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              {file.mode === "code" ? <FileCode className="w-3.5 h-3.5 text-primary" /> : <FileText className="w-3.5 h-3.5 text-muted-foreground" />}
+                              <span className="text-[11px] font-bold text-foreground truncate">{file.name}</span>
+                              <Badge variant="outline" className="ml-auto text-[8px] h-4 uppercase tracking-tighter opacity-50 px-1">{file.language}</Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed italic opacity-80 font-code">
+                              {file.content.substring(0, 80)}...
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-20 opacity-30">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em]">No matches found</p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-20 opacity-20 flex flex-col items-center gap-4">
+                        <Search className="w-10 h-10" />
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] max-w-[150px] leading-loose">Enter search criteria to scan the project.</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           )}
