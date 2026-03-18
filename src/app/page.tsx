@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,7 +32,13 @@ import {
   Trash2,
   Save,
   FilePlus,
-  MoreHorizontal
+  MoreHorizontal,
+  Share2,
+  Download,
+  CheckCircle2,
+  Zap,
+  Globe,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,6 +55,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface FileEntry {
   id: string;
@@ -115,7 +130,7 @@ export default function CatalystCanvas() {
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
-    const name = `document-${files.length + 1}.txt`;
+    const name = `untitled-${files.length + 1}.txt`;
     const { language, mode } = getDetailsFromFileName(name);
 
     const newFile: FileEntry = {
@@ -381,7 +396,7 @@ export default function CatalystCanvas() {
                 <div className="relative group px-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search name or content..." 
+                    placeholder="Search project..." 
                     className="pl-10 bg-secondary/30 border-white/5 h-11 rounded-xl"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -472,6 +487,83 @@ export default function CatalystCanvas() {
                 </h1>
               </div>
             </div>
+
+            <div className="flex items-center gap-6">
+              {/* AI Status Dashboard */}
+              <div className="hidden md:flex items-center gap-4 px-4 py-1.5 bg-secondary/20 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">Gemini 2.5</span>
+                  <Badge variant="outline" className="h-4 text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-1">ACTIVE</Badge>
+                </div>
+                <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+                  <Activity className="w-3.5 h-3.5 text-primary animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">98% Sync</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">Edge</span>
+                </div>
+              </div>
+
+              {/* Advanced Header Actions */}
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                      <Bell className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Notifications</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                      <Share2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share Workspace</TooltipContent>
+                </Tooltip>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 gap-2 text-[10px] font-bold uppercase tracking-widest border-white/10 rounded-xl hover:bg-secondary transition-all">
+                      <Download className="w-3.5 h-3.5" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card border-white/10 w-48">
+                    <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Download as</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem className="text-xs gap-2 py-2.5">
+                      <FileCode className="w-4 h-4 text-blue-400" />
+                      Project Bundle (.zip)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs gap-2 py-2.5">
+                      <FileText className="w-4 h-4 text-emerald-400" />
+                      Source Files Only
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs gap-2 py-2.5">
+                      <Terminal className="w-4 h-4 text-amber-400" />
+                      Deployment Config
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="w-px h-6 bg-white/10 mx-2" />
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button className="h-9 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-4 rounded-xl shadow-lg shadow-primary/20">
+                      <Zap className="w-4 h-4" />
+                      Connect
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Deploy Cloud Instances</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
           </header>
 
           <main className="flex-1 flex min-h-0 overflow-hidden p-4 lg:p-6 gap-6">
@@ -508,7 +600,7 @@ export default function CatalystCanvas() {
             output={aiOutput} 
             onAccept={applyAIChange} 
             onReject={() => { setAiOutput(""); setPipelineStep(-1); }}
-            onRefine={() => handleGenerate("Refine this response for better clarity.")}
+            onRefine={() => handleGenerate("Refactor this response for better clarity.")}
             isLoading={isLoading}
             step={pipelineStep}
           />
