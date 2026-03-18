@@ -114,6 +114,10 @@ export default function CatalystCanvas() {
   const [generationContext, setGenerationContext] = useState<{ text: string; isSelection: boolean; fileId: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Rename state for Explorer
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState('');
+
   const [editorStats, setEditorStats] = useState({ 
     words: 0, 
     chars: 0, 
@@ -290,6 +294,18 @@ export default function CatalystCanvas() {
     toast({ title: "Published Successfully", description: "Your workspace is live at catalyst-canvas-preview.web.app" });
   };
 
+  const handleStartRename = (id: string, name: string) => {
+    setRenamingId(id);
+    setRenamingValue(name);
+  };
+
+  const handleFinishRename = () => {
+    if (renamingId && renamingValue.trim()) {
+      handleUpdateFile(renamingId, { name: renamingValue.trim() });
+    }
+    setRenamingId(null);
+  };
+
   const colorProfiles = [
     { name: 'Catalyst White', value: '#E8ECF5' },
     { name: 'Intelligent Blue', value: '#4775D1' },
@@ -416,10 +432,27 @@ export default function CatalystCanvas() {
                             activeFileId === f.id ? "bg-[#4775D1]/10 text-[#4775D1]" : "text-[#8B93B0] hover:bg-[#222837]"
                           )}
                           onClick={() => setActiveFileId(f.id)}
+                          onDoubleClick={() => handleStartRename(f.id, f.name)}
                         >
                           <div className="flex items-center gap-3 truncate">
                             {f.mode === 'code' ? <FileCode className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                            <span className="truncate">{f.name}</span>
+                            
+                            {renamingId === f.id ? (
+                              <input
+                                autoFocus
+                                className="bg-[#15181D] border border-[#4775D1] rounded px-1 text-xs outline-none w-full"
+                                value={renamingValue}
+                                onChange={(e) => setRenamingValue(e.target.value)}
+                                onBlur={handleFinishRename}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleFinishRename();
+                                  if (e.key === 'Escape') setRenamingId(null);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span className="truncate">{f.name}</span>
+                            )}
                           </div>
                           {files.length > 1 && (
                             <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-[#F87171] transition-opacity" onClick={(e) => {
@@ -533,6 +566,7 @@ export default function CatalystCanvas() {
                 onFileSelect={setActiveFileId}
                 onFileClose={(id) => id !== activeFileId && setFiles(f => f.filter(x => x.id !== id))}
                 onNewFile={handleCreateFile}
+                onFileNameChange={(id, name) => handleUpdateFile(id, { name })}
                 content={activeFile.content}
                 onChange={(c) => handleUpdateFile(activeFile.id, { content: c })}
                 onSelectionChange={setSelection}

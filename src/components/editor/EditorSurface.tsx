@@ -25,6 +25,7 @@ interface EditorSurfaceProps {
   onFileSelect: (id: string) => void;
   onFileClose: (id: string) => void;
   onNewFile: () => void;
+  onFileNameChange: (id: string, newName: string) => void;
   content: string;
   onChange: (content: string) => void;
   onSelectionChange: (selection: string) => void;
@@ -45,6 +46,7 @@ export function EditorSurface({
   onFileSelect,
   onFileClose,
   onNewFile,
+  onFileNameChange,
   content,
   onChange,
   onSelectionChange,
@@ -58,6 +60,10 @@ export function EditorSurface({
   const [showActionBar, setShowActionBar] = useState(false);
   const [barPosition, setBarPosition] = useState({ top: 0, left: 0 });
   const [cursorPos, setCursorPos] = useState({ ln: 1, col: 1 });
+  
+  // Renaming State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   const activeFile = useMemo(() => files.find(f => f.id === activeFileId), [files, activeFileId]);
 
@@ -95,10 +101,7 @@ export function EditorSurface({
 
     if (selectedText.trim()) {
       const rect = textareaRef.current.getBoundingClientRect();
-      const scrollTop = textareaRef.current.scrollTop;
       
-      // Calculate a rough position for the floating bar
-      // In a real Monaco editor this is easier, but for a textarea we approximate
       setBarPosition({ 
         top: rect.top + 60, 
         left: rect.left + rect.width / 2 
@@ -119,6 +122,18 @@ export function EditorSurface({
 
   const badge = getLangBadge(activeFile?.name || 'file.txt');
 
+  const startRenaming = (id: string, name: string) => {
+    setEditingId(id);
+    setEditName(name);
+  };
+
+  const finishRenaming = () => {
+    if (editingId && editName.trim()) {
+      onFileNameChange(editingId, editName.trim());
+    }
+    setEditingId(null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#15181D]">
       {/* Tab Bar */}
@@ -131,9 +146,27 @@ export function EditorSurface({
               activeFileId === f.id ? "bg-[#15181D] text-[#E8ECF5]" : "text-[#4A5178] hover:bg-[#222837] hover:text-[#8B93B0]"
             )}
             onClick={() => onFileSelect(f.id)}
+            onDoubleClick={() => startRenaming(f.id, f.name)}
           >
             {f.mode === 'code' ? <FileCode className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-            <span>{f.name}</span>
+            
+            {editingId === f.id ? (
+              <input
+                autoFocus
+                className="bg-[#222837] border border-[#4775D1] rounded px-1.5 py-0.5 outline-none text-[#E8ECF5] w-32 lowercase"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={finishRenaming}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') finishRenaming();
+                  if (e.key === 'Escape') setEditingId(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className="truncate max-w-[120px]">{f.name}</span>
+            )}
+
             {files.length > 1 && (
               <X 
                 className="w-3 h-3 opacity-0 group-hover:opacity-100 hover:text-[#F87171] transition-opacity ml-2" 
