@@ -36,7 +36,8 @@ import {
   FileText,
   FileJson,
   Palette,
-  List
+  List,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,7 @@ export default function CatalystCanvas() {
   // UI State
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("explorer");
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
   const [selection, setSelection] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [aiOutput, setAiOutput] = useState("");
@@ -493,6 +495,19 @@ export default function CatalystCanvas() {
               </div>
 
               <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("h-9 w-9 rounded-xl transition-all", isAiPanelOpen ? "text-[#B478EA] bg-[#B478EA]/10" : "text-muted-foreground")}
+                      onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle AI Panel</TooltipContent>
+                </Tooltip>
                 <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-[#B478EA] rounded-xl"><Share2 className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Share</TooltipContent></Tooltip>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-2 text-[10px] font-bold uppercase tracking-widest border-white/10 rounded-xl hover:bg-secondary"><Download className="w-3.5 h-3.5" />Export</Button></DropdownMenuTrigger>
@@ -526,7 +541,10 @@ export default function CatalystCanvas() {
               />
             </div>
             
-            <aside className="hidden lg:flex w-[400px] flex-shrink-0 flex flex-col h-full rounded-2xl overflow-hidden border bg-card/40 shadow-2xl backdrop-blur-sm">
+            <aside className={cn(
+              "hidden lg:flex flex-col h-full rounded-2xl overflow-hidden border bg-card/40 shadow-2xl backdrop-blur-sm explorer-transition",
+              isAiPanelOpen ? "w-[350px] opacity-100" : "w-0 opacity-0 border-none ml-0"
+            )}>
               <PromptConsole 
                 onGenerate={handleGenerate} 
                 onAction={handleAIAction}
