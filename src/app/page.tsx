@@ -112,7 +112,7 @@ export default function CatalystCanvas() {
   };
 
   const getDetailsFromFileName = (name: string) => {
-    const ext = name.split('.').pop()?.toLowerCase();
+    const ext = name.split('.').pop()?.toLowerCase() || '';
     const language = ext === 'plsql' ? 'PL/SQL' : ext === 'sql' ? 'SQL' : 'Plain Text';
     const mode: "text" | "code" = (ext === 'sql' || ext === 'plsql') ? 'code' : 'text';
     return { language, mode };
@@ -170,12 +170,16 @@ export default function CatalystCanvas() {
     toast({ title: "File Saved As", description: `Created copy: ${newFileName}` });
   };
 
-  const handleRename = (id: string, currentName: string) => {
-    const nextName = prompt("Rename file to:", currentName);
-    if (nextName && nextName !== currentName) {
-      const { language, mode } = getDetailsFromFileName(nextName);
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, name: nextName, language, mode } : f));
-      toast({ title: "File Renamed", description: `Updated to ${nextName}` });
+  const handleRename = (id: string, nextName?: string) => {
+    const targetFile = files.find(f => f.id === id);
+    if (!targetFile) return;
+
+    const finalName = typeof nextName === 'string' ? nextName : prompt("Rename file to:", targetFile.name);
+    
+    if (finalName && finalName.trim() && finalName !== targetFile.name) {
+      const { language, mode } = getDetailsFromFileName(finalName);
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, name: finalName, language, mode } : f));
+      toast({ title: "File Renamed", description: `Updated to ${finalName}` });
     }
   };
 
@@ -369,7 +373,7 @@ export default function CatalystCanvas() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button 
                         variant="ghost" size="icon" className="h-6 w-6 hover:text-primary" 
-                        onClick={(e) => { e.stopPropagation(); handleRename(file.id, file.name); }}
+                        onClick={(e) => { e.stopPropagation(); handleRename(file.id); }}
                       >
                         <Edit2 className="w-3 h-3" />
                       </Button>
@@ -476,7 +480,7 @@ export default function CatalystCanvas() {
               <div className="h-4 w-px bg-border" />
               <div 
                 className="flex items-center gap-2 bg-secondary/40 px-3 py-1 rounded-full border border-white/5 cursor-pointer hover:bg-secondary/60 transition-colors"
-                onClick={() => handleRename(activeFile.id, activeFile.name)}
+                onClick={() => handleRename(activeFile.id)}
               >
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">File:</span>
                 <span className="text-[10px] font-semibold text-primary/80 truncate max-w-[200px]">{activeFile.name}</span>
@@ -502,8 +506,8 @@ export default function CatalystCanvas() {
                 onRefine={(p) => p ? handleGenerate(p) : handleFormat()}
                 onFormat={handleFormat}
                 onSave={() => toast({ title: "File Saved", description: `Successfully committed ${activeFile.name}` })}
-                onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.')[1]}`); setIsSaveAsOpen(true); }}
-                onRename={() => handleRename(activeFile.id, activeFile.name)}
+                onSaveAs={() => { setNewFileName(`${activeFile.name.split('.')[0]}-copy.${activeFile.name.split('.').pop()}`); setIsSaveAsOpen(true); }}
+                onRename={(newName) => handleRename(activeFile.id, newName)}
                 onDelete={() => handleDeleteFile(activeFile.id)}
               />
             </div>

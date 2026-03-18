@@ -15,7 +15,9 @@ import {
   Edit2, 
   FilePlus, 
   History,
-  Code
+  Code,
+  Check,
+  X
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 interface EditorSurfaceProps {
   fileName: string;
@@ -39,7 +42,7 @@ interface EditorSurfaceProps {
   onFormat: () => void;
   onSave: () => void;
   onSaveAs: () => void;
-  onRename: () => void;
+  onRename: (newName: string) => void;
   onDelete: () => void;
 }
 
@@ -58,13 +61,28 @@ export function EditorSurface({
   onDelete,
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [lineCount, setLineCount] = useState(1);
   const [showSelectionBar, setShowSelectionBar] = useState(false);
   const [barPosition, setBarPosition] = useState({ top: 0, left: 0 });
+  
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [editName, setEditName] = useState(fileName);
 
   useEffect(() => {
     setLineCount(content.split("\n").length);
   }, [content]);
+
+  useEffect(() => {
+    if (isRenaming && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isRenaming]);
+
+  useEffect(() => {
+    setEditName(fileName);
+  }, [fileName]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
@@ -89,19 +107,51 @@ export function EditorSurface({
     }
   };
 
+  const handleRenameSubmit = () => {
+    if (editName.trim() && editName !== fileName) {
+      onRename(editName);
+    }
+    setIsRenaming(false);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleRenameSubmit();
+    if (e.key === "Escape") {
+      setEditName(fileName);
+      setIsRenaming(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-card/30 border border-white/5 rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:border-primary/20">
       {/* Editor Toolbar */}
       <div className="flex items-center justify-between px-5 py-3 bg-secondary/20 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div 
-            className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-primary/40 transition-colors group"
-            onClick={onRename}
-          >
-            {language === "SQL" || language === "PL/SQL" ? <Database className="w-3.5 h-3.5 text-blue-400" /> : <FileText className="w-3.5 h-3.5 text-primary" />}
-            <span className="text-xs font-bold tracking-wide text-foreground/90">{fileName}</span>
-            <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-          </div>
+          {isRenaming ? (
+            <div className="flex items-center gap-2">
+              <Input
+                ref={inputRef}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={handleRenameSubmit}
+                onKeyDown={handleRenameKeyDown}
+                className="h-7 w-48 bg-background border-primary/40 text-xs py-0 px-2"
+              />
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-500" onClick={handleRenameSubmit}><Check className="w-3 h-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setIsRenaming(false)}><X className="w-3 h-3" /></Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-lg border border-white/10 cursor-pointer hover:border-primary/40 transition-colors group"
+              onClick={() => setIsRenaming(true)}
+            >
+              {language === "SQL" || language === "PL/SQL" ? <Database className="w-3.5 h-3.5 text-blue-400" /> : <FileText className="w-3.5 h-3.5 text-primary" />}
+              <span className="text-xs font-bold tracking-wide text-foreground/90">{fileName}</span>
+              <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+            </div>
+          )}
           <div className="h-4 w-px bg-white/10 mx-1" />
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{language} Mode</span>
         </div>
@@ -147,7 +197,7 @@ export function EditorSurface({
                 <Copy className="w-3.5 h-3.5 text-blue-400" />
                 Save As / Clone
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onRename} className="gap-2 text-xs py-2 cursor-pointer">
+              <DropdownMenuItem onClick={() => setIsRenaming(true)} className="gap-2 text-xs py-2 cursor-pointer">
                 <Edit2 className="w-3.5 h-3.5 text-amber-400" />
                 Rename File
               </DropdownMenuItem>
