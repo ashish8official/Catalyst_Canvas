@@ -3,8 +3,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { FileText, Braces, Save, MoreHorizontal, Database } from "lucide-react";
+import { FileText, Braces, Save, MoreHorizontal, Database, Copy } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EditorSurfaceProps {
   fileName: string;
@@ -15,6 +16,8 @@ interface EditorSurfaceProps {
   language: string;
   onRefine: (prompt?: string) => void;
   onFormat: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
 }
 
 export function EditorSurface({
@@ -26,6 +29,8 @@ export function EditorSurface({
   language,
   onRefine,
   onFormat,
+  onSave,
+  onSaveAs,
 }: EditorSurfaceProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [lineCount, setLineCount] = useState(1);
@@ -73,17 +78,41 @@ export function EditorSurface({
         </div>
 
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" size="sm" 
+                className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
+                onClick={onFormat}
+              >
+                <Braces className="w-3.5 h-3.5" />
+                AI Format
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Beautify with AI</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" size="sm" 
+                className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider border-white/5 hover:bg-white/5"
+                onClick={onSaveAs}
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Save As
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Clone or Rename File</TooltipContent>
+          </Tooltip>
+
           <Button 
-            variant="ghost" size="sm" 
-            className="h-8 gap-2 text-[10px] font-bold uppercase tracking-wider hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
-            onClick={onFormat}
+            size="sm" 
+            className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold uppercase px-4 shadow-lg shadow-primary/20 transition-all active:scale-95"
+            onClick={onSave}
           >
-            <Braces className="w-3.5 h-3.5" />
-            AI Format
-          </Button>
-          <Button size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold uppercase px-4 shadow-lg shadow-primary/20 transition-all active:scale-95">
             <Save className="w-3.5 h-3.5" />
-            Commit
+            Save
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
             <MoreHorizontal className="w-4 h-4" />
