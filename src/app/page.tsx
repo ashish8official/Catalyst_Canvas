@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { EditorSurface } from "@/components/editor/EditorSurface";
 import { PromptConsole } from "@/components/ai/PromptConsole";
 import { AIOutputDisplay } from "@/components/ai/AIOutputDisplay";
@@ -112,6 +112,30 @@ export default function CatalystCanvas() {
   // Active File Derived State
   const activeFile = useMemo(() => files.find(f => f.id === activeFileId) || files[0], [files, activeFileId]);
 
+  // Language Detection Logic
+  const detectLanguage = (name: string, content: string) => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    
+    // 1. Extension Check
+    if (ext === 'sql') return { language: 'SQL', mode: 'code' as const };
+    if (ext === 'plsql') return { language: 'PL/SQL', mode: 'code' as const };
+    if (ext === 'py') return { language: 'Python', mode: 'code' as const };
+    if (ext === 'md') return { language: 'Markdown', mode: 'text' as const };
+    if (ext === 'json') return { language: 'JSON', mode: 'code' as const };
+    if (ext === 'txt') return { language: 'Plain Text', mode: 'text' as const };
+
+    // 2. Content Sniffing (Fallback)
+    const snippet = content.substring(0, 500).toUpperCase();
+    const sqlKeywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'CREATE ', 'DROP ', 'ALTER ', 'TABLE '];
+    const plsqlKeywords = ['DECLARE', 'BEGIN', 'EXCEPTION', 'PROCEDURE ', 'FUNCTION '];
+
+    if (plsqlKeywords.some(kw => snippet.includes(kw))) return { language: 'PL/SQL', mode: 'code' as const };
+    if (sqlKeywords.some(kw => snippet.includes(kw))) return { language: 'SQL', mode: 'code' as const };
+    if (snippet.includes('DEF ') || snippet.includes('IMPORT ')) return { language: 'Python', mode: 'code' as const };
+
+    return { language: 'Plain Text', mode: 'text' as const };
+  };
+
   // Document Stats
   const stats = useMemo(() => {
     const text = activeFile.content || "";
@@ -122,21 +146,19 @@ export default function CatalystCanvas() {
   }, [activeFile.content]);
 
   const updateActiveFileContent = (newContent: string) => {
-    setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: newContent } : f));
-  };
-
-  const getDetailsFromFileName = (name: string) => {
-    const ext = name.split('.').pop()?.toLowerCase() || '';
-    if (ext === 'plsql' || ext === 'sql') return { language: 'SQL', mode: 'code' as const };
-    if (ext === 'py') return { language: 'Python', mode: 'code' as const };
-    if (ext === 'json') return { language: 'JSON', mode: 'code' as const };
-    return { language: 'Plain Text', mode: 'text' as const };
+    setFiles(prev => prev.map(f => {
+      if (f.id === activeFileId) {
+        const { language, mode } = detectLanguage(f.name, newContent);
+        return { ...f, content: newContent, language, mode };
+      }
+      return f;
+    }));
   };
 
   const handleCreateFile = () => {
     const newId = Math.random().toString(36).substring(7);
     const name = `untitled-${files.length + 1}.txt`;
-    const { language, mode } = getDetailsFromFileName(name);
+    const { language, mode } = detectLanguage(name, "");
 
     const newFile: FileEntry = {
       id: newId,
@@ -166,7 +188,7 @@ export default function CatalystCanvas() {
 
   const handleSaveAs = () => {
     if (!newFileName.trim()) return;
-    const { language, mode } = getDetailsFromFileName(newFileName);
+    const { language, mode } = detectLanguage(newFileName, activeFile.content);
     const newId = Math.random().toString(36).substring(7);
     const newFile: FileEntry = { id: newId, name: newFileName, content: activeFile.content, language, mode };
     setFiles(prev => [...prev, newFile]);
@@ -178,7 +200,8 @@ export default function CatalystCanvas() {
 
   const handleRename = (id: string, nextName: string) => {
     if (nextName && nextName.trim()) {
-      const { language, mode } = getDetailsFromFileName(nextName);
+      const file = files.find(f => f.id === id);
+      const { language, mode } = detectLanguage(nextName, file?.content || "");
       setFiles(prev => prev.map(f => f.id === id ? { ...f, name: nextName, language, mode } : f));
     }
   };
@@ -348,6 +371,19 @@ export default function CatalystCanvas() {
                   ))}
                 </div>
               </ScrollArea>
+            </div>
+          )}
+          {sidebarTab === "settings" && (
+            <div className="min-w-[320px] p-6 space-y-6">
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Settings</span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Word Wrap</Label>
+                  <Button variant={wordWrap ? "default" : "outline"} size="sm" onClick={() => setWordWrap(!wordWrap)} className="h-7 text-[10px]">
+                    {wordWrap ? "ON" : "OFF"}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>

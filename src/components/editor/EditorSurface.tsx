@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
@@ -15,10 +16,12 @@ import {
   Terminal,
   Check,
   X,
-  FileCode
+  FileCode,
+  FileJson,
+  Hash
 } from "lucide-react";
 import { SelectionActionBar } from "./SelectionActionBar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +130,8 @@ export function EditorSurface({
   const getFileIcon = () => {
     if (language === "SQL" || language === "PL/SQL") return <Database className="w-3.5 h-3.5 text-blue-400" />;
     if (language === "Python") return <Terminal className="w-3.5 h-3.5 text-emerald-400" />;
+    if (language === "JSON") return <FileJson className="w-3.5 h-3.5 text-amber-400" />;
+    if (language === "Markdown") return <Hash className="w-3.5 h-3.5 text-purple-400" />;
     return <FileText className="w-3.5 h-3.5 text-primary" />;
   };
 
