@@ -16,7 +16,7 @@
 ### Phase 2 "Smart" Enhancements (Released)
 - ✨ **Predictive Typing (Ghost Text)**: Real-time, inline AI code predictions powered by Gemini that appear transparently as you write.
 - 🧠 **Project Memory & Context Vault**: Define global styling rules, database schemas, or architectural guidelines via the sidebar. The Vault mathematically injects these rules directly into the AI's internal reasoning loop on every prompt.
-- 🎯 **Native Editor AI Actions**: Simply highlight code, right-click, and select natively integrated actions like **AI Explain**, **AI Fix**, or **AI Format**, instantly sending your selection exactly to the Genkit pipelines.
+- 🎯 **Native Editor AI Actions**: Simply highlight code, right-click, and select natively integrated actions like **AI Explain**, **AI Fix**, or **AI Format**, instantly sending your selection exactly to the Genkit pipelines. 
 
 ---
 
@@ -26,7 +26,7 @@
 - [Node.js](https://nodejs.org/) installed
 - A [Google Gemini API Key](https://aistudio.google.com/app/apikey)
 
-### Local Development
+#### Local Development
 
 1. **Clone the repository:**
    ```bash
