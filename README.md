@@ -23,7 +23,7 @@
 ## 💻 Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) installed
+- [Node.js](https://nodejs.org/) installed  
 - A [Google Gemini API Key](https://aistudio.google.com/app/apikey)
 
 #### Local Development
